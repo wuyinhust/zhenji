@@ -29,15 +29,39 @@
 
 
 
-## 性能版新增
+## 视频模式（V5.1+ 四档体系）
 
-视频默认使用三档模式：
+V5.1.1 起，V5 的「掠影 / 听澜 / 观澜」扩充为四档：
 
 ```text
-掠影 · 效率模式：元数据 + 6–12 个代表画面，批量筛选
-听澜 · 基本模式：完整转录优先 + 少量关键帧，理解大多数视频
-观澜 · 完整模式：完整转录 + 场景切分 + 时间轴，研究重点视频
+浮光 fuguang
+真机快速陪看，不下载，0 网络，0 风控，~35s/视频
+    适用：决定值不值得看
+    ↓
+掠影 lueying
+480p 本地副本 + 6–12 关键帧
+    ~4.5s/视频（含本地副本已缓存）
+    适用：批量筛选 + 看产品包装 / OCR
+    ↓
+听澜 tinglan
+720p + 本地音频 + 完整转录（faster-whisper small）
+    ~20s/视频（模型已缓存）
+    适用：要全文本分析、口播抓字
+    ↓
+观澜 guanlan
+best 视频 + medium 转录 + 24 帧 + scene detection
+    ~70s/视频（模型已缓存）
+    适用：复刻结构、入 Pattern 库
 ```
+
+四档对 `MediaFetchResult.status` 的最低要求：
+
+| 档 | 接受状态 |
+|---|---|
+| fuguang | `metadata_only` 或 `media_ready` |
+| lueying | `media_ready` |
+| tinglan | `media_ready` |
+| guanlan | `media_ready` |
 
 运行时同时启用：
 
@@ -63,7 +87,21 @@ schemas/google-sheets-schema-v3.json
 ```
 
 
-## V4 · 无人值守
+## V5.1 · phone-harness 内置 adapter
+
+V5.1 把 phone-harness 接入方式重新定义：
+
+- 不再要求用户从 codeload.github.com 单独 download
+- zhenji 内置 `scripts/phone_harness/` adapter，运行时探测外部 CLI
+- 找不到 phone-harness 时给清晰提示让用户从 WorkBuddy Skill marketplace 安装
+- v5 中"必须 idle calibration / 必须 input guard"等强约束改为可配置，
+  `PHONE_HARNESS_STRICT=1` 恢复严格行为
+
+V5.1.2 重要修正：
+
+- "bundled" 措辞改为"内置 adapter"——实际仍依赖外部 CLI
+- dynamic geometry：默认常量仅 fallback，运行时必须 `screen_info()` 拿真实窗口
+- 移除运行时固定镜像偏移作为 global coordinate
 
 V4 在 V3 性能优化之上新增真正的长批处理运行时：
 
@@ -92,6 +130,45 @@ scripts/unattended_runtime.py
 schemas/google-sheets-schema-v4.json
 ```
 
+
+## 平台支持（V5.1+ 多平台）
+
+| 平台 | 状态 | Adapter |
+|---|---|---|
+| XHS 小红书 | Production | `scripts/xhs_adapter.py` |
+| Douyin 抖音 | Experimental v0 | `scripts/douyin_adapter.py` |
+| Instagram | Planned | router_ready |
+| TikTok | Planned | router_ready |
+
+平台架构：
+
+```text
+phone-harness (内置 adapter)
+    ↓
+Share Link Harvester
+    ↓
+platform_router         (scripts/platform_router.py)
+    ↓
+URL Resolver            (DouyinAdapter.resolve_url)
+    ↓
+Adapter Registry        (scripts/media_adapters.py)
+ ┌─────────┼──────────┐
+ XHS    Douyin       (future IG/TT)
+  ↓        ↓
+MediaFetchResult       (scripts/media_adapter_protocol.py)
+    ↓
+Media Queue            (scripts/media_queue.py)
+    ↓
+Generic Media Worker   (scripts/media_worker.py)
+    ↓
+Local Media Pipeline   (scripts/media_pipeline.py)
+    ↓
+浮光 / 掠影 / 听澜 / 观澜
+    ↓
+Batch Storage (Sheets / Drive / 本地)
+```
+
+核心原则：平台差异只留在 Adapter 层；Queue / Worker / FFmpeg / Whisper / Analysis 全部共用。
 
 ## V5 · 真机拿链接，本地看视频
 
@@ -178,6 +255,7 @@ zhenji/
 ├── SKILL.md
 ├── README.md
 ├── CHANGELOG.md
+├── VERSION
 ├── SOURCES.md
 ├── examples/
 │   ├── config.example.yaml
@@ -191,27 +269,56 @@ zhenji/
 │   ├── runtime-performance.md
 │   ├── video-modes.md
 │   ├── helper-macros.md
+│   ├── media-pipeline-v5.md
+│   ├── share-link-harvest-v5.md
 │   ├── unattended-watchdog.md
 │   ├── unattended-runtime-v4.md
 │   ├── migration-v2-v3.md
-│   └── migration-v3-v4.md
+│   ├── migration-v3-v4.md
+│   ├── migration-v4-v5.md
+│   └── zhenji_setup.md       ← V5.1+ (PSSD venv, HF mirror, etc.)
 ├── scripts/
-│   ├── runtime_cache.py
-│   ├── write_buffer.py
 │   ├── action_macros.py
-│   ├── phone_helpers.py
-│   ├── video_modes.py
 │   ├── checkpoint.py
-│   ├── watchdog.py
+│   ├── clipboard_link.py
+│   ├── douyin_adapter.py     ← V5.1+ Douyin MediaAdapter
+│   ├── douyin_media.py       ← V5.1+ low-level 抖音 utilities
+│   ├── ffmpeg_tools.py
 │   ├── idle_calibration.py
 │   ├── keepalive.py
-│   └── unattended_runtime.py
+│   ├── media_adapter_protocol.py  ← V5.1+ MediaFetchResult + Protocol
+│   ├── media_adapters.py     ← V5.1+ ADAPTERS registry
+│   ├── media_pipeline.py     ← V5.1+ generic, no platform hardcode
+│   ├── media_queue.py
+│   ├── media_worker.py       ← V5.1+ generic, registry-based
+│   ├── phone_harness/        ← V5.1+ built-in phone-harness adapter
+│   │   ├── __init__.py
+│   │   ├── geometry.py       ← dynamic 窗口坐标
+│   │   └── sentinel.py       ← 剪贴板哨兵
+│   ├── phone_helpers.py
+│   ├── platform_router.py    ← V5.1+ strict 域名匹配
+│   ├── runtime_cache.py
+│   ├── share_link_flow.py
+│   ├── transcription.py
+│   ├── unattended_runtime.py
+│   ├── video_modes.py        ← V5.1+ 四档体系
+│   ├── watchdog.py
+│   ├── write_buffer.py
+│   ├── xhs_adapter.py        ← V5.1+ XhsAdapter (wraps xhs_media)
+│   └── xhs_media.py
 ├── schemas/
 │   ├── google-sheets-schema-v2.json
 │   ├── google-sheets-schema-v3.json
-│   └── google-sheets-schema-v4.json
-└── tests/
-    └── test_v4_runtime.py
+│   ├── google-sheets-schema-v4.json
+│   └── google-sheets-schema-v5.json
+├── tests/
+│   ├── test_v4_runtime.py
+│   ├── test_v5_media_pipeline.py
+│   ├── test_platform_router.py        ← V5.1+
+│   ├── test_douyin_media.py           ← V5.1+
+│   ├── test_media_adapter_registry.py ← V5.1+
+│   └── test_phone_harness_geometry.py ← V5.1+
+└── .github/workflows/test.yml          ← V5.1+ minimal CI
 ```
 
 ## 安装

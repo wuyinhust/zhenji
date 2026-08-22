@@ -1,18 +1,20 @@
-"""phone-harness bundled driver for zhenji v5.1.
+"""phone-harness adapter for zhenji v5.1.2.
 
-zhenji 不再要求用户从 codeload.github.com 单独 download phone-harness。
-调用统一通过本子包：
-  from zhenji.scripts.phone_harness import tap, screenshot, screen_info, ...
+准确说法（v5.1.2 修正 v5.1.1 文案）：
+- phone-harness 还是外部 CLI；本子包是 zhenji 内置的 adapter / wrapper。
+- `shutil.which('phone-harness')` 运行时探测；找不到时提示用户从
+  WorkBuddy Skill marketplace 安装 phone-harness skill。
+- zhenji **不会自动 download** phone-harness；也不 vendor 一份。
+- 历史 "bundled" 措辞改为 "内置 adapter"。
 
-行为约定（v5.1）：
-- bundled：phone-harness 是 zhenji 内置依赖，不再强制用户 install 路径
-- 探测：shutil.which('phone-harness') 查找 $PATH；如未安装提示用户从 WorkBuddy Skill marketplace 安装
-- 强约束 → 建议性：v5 中的强制约束改为可配置；通过 PHONE_HARNESS_STRICT=1 环境变量恢复旧严格行为
-- 用户可控：所有副作用（HID 输入、剪贴板写）均在 Python 端可见，无 silent 副作用
+行为约定（v5.1.2）：
+- adapter 模式：v5 强约束改为可配置；PHONE_HARNESS_STRICT=1 恢复严格
+- 可见副作用：所有 HID 输入 / 剪贴板写均有 Python 端 callback
+- 动态几何：窗口偏移与尺寸不存全局常量；调用 screen_info() 拿最新
 
 子模块：
-- cli: subprocess 转发，包装 `phone-harness <<'PY' ... PY`
-- geometry: iPhone Mirroring 窗口几何（默认 440×970, offset 1216,25）
+- geometry: iPhone Mirroring 窗口几何常量 + visual↔screen 换算
+            默认值仅作 fallback；运行时必须 screen_info()
 - sentinel: 剪贴板哨兵协议
 """
 from __future__ import annotations
@@ -26,7 +28,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-__version__ = "5.1.0"
+__version__ = "5.1.2"
 
 # ============================================================
 # 1. phone-harness 探测与初始化
@@ -38,7 +40,8 @@ PHONE_HARNESS_BIN = os.environ.get("PHONE_HARNESS_BIN") or shutil.which("phone-h
 def require_phone_harness() -> str:
     """Find phone-harness executable; raise with actionable message if missing.
 
-    v5.1 bundled: 不下载；用户须自行从 WorkBuddy Skill marketplace install phone-harness skill。
+    v5.1.2: 这是内置 adapter 模式——zhenji 不会自动 download / vendor phone-harness。
+    用户须自行从 WorkBuddy Skill marketplace 安装 phone-harness skill 后再使用。
     """
     global PHONE_HARNESS_BIN
     if PHONE_HARNESS_BIN is None:
@@ -47,7 +50,7 @@ def require_phone_harness() -> str:
     if PHONE_HARNESS_BIN is None:
         raise FileNotFoundError(
             "phone-harness not found in $PATH.\n"
-            "v5.1 bundled 模式下 zhenji 不会自动 download。\n"
+            "zhenji 是内置 phone-harness adapter，但仍需用户已安装 phone-harness skill。\n"
             "请通过 WorkBuddy Skill marketplace 安装 `phone-harness` skill：\n"
             "  • WorkBuddy Settings → Skills → 搜索 'phone-harness'\n"
             "  • 或：打开 phone-harness skill 详情页 → Install\n"
@@ -154,8 +157,9 @@ def swipe(x1: float, y1: float, x2: float, y2: float, duration: float = 0.4) -> 
 def long_press(x: float, y: float, duration: float = 1.0) -> None:
     """Long-press at (x, y) for `duration` seconds.
 
-    v5.1 注意：long_press > 1s 已知偶发 phone-harness SIGKILL (exit  11)。
-    这是 **历史记录**，v5.1 不再强制规避——用户自行决定风险。
+    v5.1.2 风险记录（用户自行决定接受/规避）：
+        long_press > 1s 历史上偶发 phone-harness SIGKILL (exit 137)。
+        zhenji 不再强制规避——用户自行决定。
     """
     p = run_heredoc(
         f"long_press({x}, {y}, duration={duration})\n",
@@ -236,7 +240,7 @@ def doctor() -> dict[str, Any]:
         si = {"error": str(exc)}
     return {
         "phone_harness_bin": bin_,
-        "phone_harness_version": "bundled via v5.1",
+        "phone_harness_version": "adapter-via-cli (v5.1.2)",
         "connection_state": cs,
         "screen_info": si,
         "zhenji_version": __version__,

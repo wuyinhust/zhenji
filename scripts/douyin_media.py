@@ -1,18 +1,22 @@
 """Douyin media adapter for Zhenji V5.1+.
 
-类比 xhs_media.py, but for douyin.com / iesdouyin.com / TikTok.
+类比 xhs_media.py，但目标是抖音。
 
-下载策略（按优先级）：
-  1. yt-dlp Douyin extractor（需要 web login）
-  2. iesdouyin.com API (aweme/iteminfo) — 无 cookie 也能用，但需要 msToken
-  3. f2 (johnserf-seed/f2) — Python 包，处理 X-Bogus 签名
-  4. smile7up/xiaohongshu-downloader 不覆盖 douyin
+下载策略（v5.1.2 现状，按实际能力描述，不夸大）：
+    1. yt-dlp Douyin extractor（需要 Chrome 已登录 douyin web）
+    2. iesdouyin.com web API（公开 metadata endpoint；成功率不稳定，
+       不视为稳定保证；不实现 X-Bogus / a_bogus 签名算法）
 
-抖音下载比小红书难很多：抖音水印 + X-Bogus 签名 + a_bogus 算法。
-本适配器在 v5.1 阶段实现 v0：
-- 仅做 yt-dlp 兜底 + iesdouyin API 兜底
-- 暂时不实现 X-Bogus / a_bogus 签名
-- 用户主动提供 msToken 或 cookie 时可走 iesdouyin / yt-dlp
+绝对不要写成既定能力的描述：
+    - \"免 cookie，仅需 msToken header\" × → 必须实际验证当前接口可用
+    - \"msToken (X-MS-STUB) header\" × → 当前仅作为可选 Cookie 携带
+    - \"抖音国际/反爬 API\" × → iesdouyin.com 不是国际版，是 web 端点，
+      跟 tiktok 国际版无关
+
+诚实版本：
+    用户主动提供 msToken 或 cookie 时可走 iesdouyin metadata 接口；
+    不实现 X-Bogus / a_bogus 签名；
+    命中率与字段可用性不做稳定保证。
 """
 from __future__ import annotations
 
@@ -160,21 +164,28 @@ def download_with_iesdouyin(
     ms_token: str | None = None,
     timeout_seconds: float = 600,
 ) -> DownloadResult:
-    """Download via iesdouyin.com/web/api/v2/aweme/iteminfo + playwm URL.
+    """Try iesdouyin.com/web/api/v2/aweme/iteminfo to get public metadata.
 
-    抖音国际/反爬 API；无 cookie 可用，但需要 msToken (X-MS-STUB) header。
-    大多数公共 API 服务（如 douyin.wtf）自动处理 msToken。
+    已知事实（v5.1.2 实测 / 当前环境观察）：
+        - 当前接口在不携带 cookie 时通常也会返回 item 字段，
+          但命中率与 schema 字段可用性不能视为稳定保证；
+        - 即便带了 msToken cookie，仍可能受 X-Bogus 签名校验失败；
+        - 抖音水印 video_url 即使拿到，也需要 ffmpeg 二次处理去水印；
+        - 因此 v0 路径只写 metadata.json，不下载视频本体。
 
     Args:
-        url: 抖音分享链接 (https://v.douyin.com/xxx 或 https://www.douyin.com/video/xxx)
-        ms_token: 用户手动提供的 msToken (从抖音 web request 抓取)
+        url: 完整 URL（必须是 canonical douyin.com/video/<id> 形式；
+              v.douyin.com 短链请先用 DouyinAdapter.resolve_url() 跟 redirect）。
+        ms_token: 用户可选提供的 msToken cookie。
+        timeout_seconds: HTTP 请求超时。
 
     Returns:
-        DownloadResult with metadata (title, cover_url, video_url, etc.)
-        注意：iesdouyin 不会自动下载视频本体；返回 metadata 中的 playwm_url /
-        play_addr.url_list 需要另外用 ffmpeg / requests 下载。
+        DownloadResult with metadata only — files=[iesdouyin_metadata.json]，
+        backend='iesdouyin'。never ok=True 表示"已下载视频"。
 
-    TODO: v0 仅取 metadata；下载 video_url 由调用方决定（避免 watermark 冲突）
+    NOT implemented:
+        X-Bogus / a_bogus 签名算法
+        Video body download (含水印处理 / 去水印)
     """
     import re
     import urllib.request

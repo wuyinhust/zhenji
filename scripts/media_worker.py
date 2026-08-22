@@ -1,15 +1,20 @@
-"""Simple persistent media worker.
+"""Generic media worker (V5.1.2+).
 
-The production Skill can run multiple instances. This worker processes XHS jobs
-from SQLite one-by-one; analysis/storage layers consume generated manifests.
+不再 hardcode `if job.platform != "xhs"`。从 media_adapters.ADAPTERS 取 platform key。
+未注册 platform → failed:adapter_not_registered。
+可重复入队（attempts >= 3 才转 failed）。
 """
 from __future__ import annotations
 
 import argparse
+import logging
 import time
 
 from media_queue import MediaQueue
-from media_pipeline import process_xhs_url
+from media_pipeline import process_media_url
+from media_adapters import get as get_adapter
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:
@@ -17,10 +22,15 @@ def main() -> int:
     ap.add_argument("--queue", default="./runtime/media-jobs.sqlite3")
     ap.add_argument("--output", default="./runtime/media")
     ap.add_argument("--backend", default="auto")
-    ap.add_argument("--smile7up-script", default="")
     ap.add_argument("--cookies-browser", default="chrome")
-    ap.add_argument("--once", action="store_true")
+    ap.add_argument("--yt-dlp-bin", default="yt-dlp")
+    ap.add_argument("--whisper-model", default="small")
+    ap.add_argument("--once", action="store_true", help="Process one job then exit")
+    ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
 
     q = MediaQueue(args.queue)
 
@@ -32,20 +42,30 @@ def main() -> int:
             time.sleep(1.0)
             continue
 
-        if job.platform != "xhs":
-            q.mark(job.job_id, "failed", error=f"adapter_not_implemented:{job.platform}")
+        # 平台 registry 校验
+        adapter = get_adapter(job.platform)
+        if adapter is None:
+            q.mark(
+                job.job_id, "failed",
+                error=f"adapter_not_registered:{job.platform}",
+            )
+            if args.once:
+                return 0
             continue
 
         try:
-            result = process_xhs_url(
+            result = process_media_url(
+                platform=job.platform,
                 url=job.source_url,
                 post_key=job.post_key,
                 mode=job.mode,
                 output_root=args.output,
                 downloader_backend=args.backend,
-                smile7up_script=args.smile7up_script or None,
+                yt_dlp_bin=args.yt_dlp_bin,
                 cookies_from_browser=args.cookies_browser or None,
+                whisper_model=args.whisper_model,
             )
+
             if result.ok:
                 q.mark(
                     job.job_id,
@@ -53,6 +73,8 @@ def main() -> int:
                     backend=result.backend,
                     output_dir=args.output,
                     metadata={
+                        "fetch_status": result.fetch_status,
+                        "platform": result.platform,
                         "video_path": result.video_path,
                         "audio_path": result.audio_path,
                         "keyframes": result.keyframes,
@@ -63,14 +85,18 @@ def main() -> int:
                 )
             else:
                 state = "retry" if job.attempts < 3 else "failed"
-                q.mark(job.job_id, state, backend=result.backend, error=result.error)
+                q.mark(
+                    job.job_id, state,
+                    backend=result.backend,
+                    error=result.error,
+                )
         except Exception as exc:
             state = "retry" if job.attempts < 3 else "failed"
             q.mark(
-                job.job_id,
-                state,
+                job.job_id, state,
                 error=f"{type(exc).__name__}:{exc}",
             )
+            logger.exception("job %s crashed", job.job_id)
 
         if args.once:
             return 0
@@ -78,3 +104,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

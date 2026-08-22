@@ -1,5 +1,22 @@
 # Changelog
 
+## V5.1.2
+
+工程收口（源自 v5.1.1 审查的 P0/P1/P2 13 项）。**纯重构，无行为回退。**
+
+- **P0 适配器注册表**：新增 `scripts/media_adapter_protocol.py`（统一结果类型 `MediaFetchResult` + `FetchStatus` 状态机 + `MediaAdapter` Protocol）与 `scripts/media_adapters.py`（`ADAPTERS` 注册表 + `register/unregister/get/keys/supported_keys`）。
+  - `xhs_adapter.py` / `douyin_adapter.py` 包装底层 `xhs_media` / `douyin_media` 实现 Protocol。
+  - `media_worker.py` 改为从注册表取 adapter（不再 hardcode `if platform != "xhs"`）；`media_pipeline.process_xhs_url` 升级为 `process_media_url(platform, url, mode)`，彻底去平台硬编码。
+  - 第三方平台（IG / TikTok / 第三方抖音）可 `register(MyAdapter())` 注入，无需改 worker。
+- **P0 抖音语义修正**：`douyin_adapter.fetch()` 显式区分 `METADATA_ONLY`（iesdouyin v0 仅 metadata、无本地副本）与 `MEDIA_READY`，不再让 `ok=True` 误导下游。浮光档接受 `metadata_only`；掠影/听澜/观澜必须 `media_ready`（由 worker 拒收）。
+- **P0 短链 resolver**：`douyin_adapter.resolve_url()` 对 `v.douyin.com/xxx` 做 redirect walk 拿 canonical URL + aweme_id。
+- **P0 严格域名匹配**：`platform_router.is_domain()` 改为 `host == domain` 精确比对，`xhslink.com.evil.example` 等钓鱼域名正确判 `unknown`（14/14 测试通过，含反向 case）。
+- **P1 内置 adapter 文案**：`phone_harness/__init__.py` 把 "bundled/vendored" 改为"内置 adapter"；`long_press` 风险改为历史记录说明（不强制禁用）。
+- **P1 动态几何**：`phone_harness/geometry.py` 重写——`LiveBounds` + `visual_to_screen_live()` + `live_bounds_from_screen_info()`，运行时由 `screen_info()` 取真实窗口；硬坐标仅作 fallback，不再存全局常量。
+- **P1 工程加速固化**：`references/zhenji_setup.md` 沉淀 PSSD venv / `HF_ENDPOINT=https://hf-mirror.com` / `huggingface_hub<0.27` + 卸 hf-xet / `shutil.rmtree` 四件套；`scripts/benchmarks/bench.py` 进仓库。
+- **P1 README 同步**：四档（浮光/掠影/听澜/观澜）说明 + 平台支持状态表 + 新文件树。
+- **P1 测试 + CI**：新增 `tests/test_media_adapter_registry.py`、`tests/test_phone_harness_geometry.py`；`.github/workflows/test.yml` 跑全部 `tests/test_*.py`（媒体模块为零三方依赖，CI 无需安装）。
+
 ## V5.1.1
 
 - **抖音 (douyin) 适配器 v0**：新增 `scripts/douyin_media.py`（类比 xhs_media.py）：
