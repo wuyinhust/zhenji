@@ -1,0 +1,188 @@
+project:
+  name: zhenji
+  schema_version: zhenji-v5-local-media
+  timezone: Asia/Shanghai
+
+collector:
+  provider: iphone
+  adapter: xhs-iphone
+
+storage:
+  facts:
+    provider: google_sheets
+    spreadsheet_id: ""
+  evidence:
+    provider: google_drive
+    root_folder_id: ""
+    root_folder_name: zhenji
+  reports:
+    provider: google_drive
+
+retrieval:
+  structured: true
+  keyword: true
+  semantic:
+    enabled: false
+    provider: ""
+
+monitor:
+  baseline_posts: 15
+  incremental_posts_limit: 12
+  comments_per_new_post: 0
+
+followup:
+  checkpoints_minutes: [60, 360, 1440, 4320, 10080]
+
+analysis:
+  version: xhs-analysis-v2
+  account_audit_sample: 15
+  competitor_sample: 10
+  pattern_mining:
+    enabled: true
+    min_repeat_for_active: 3
+
+knowledge:
+  enabled: true
+  drive_cards: true
+
+safety:
+  read_only_phone: true
+  stop_on_security_challenge: true
+  auto_publish: false
+  auto_reply: false
+
+
+performance:
+  observation_cache: true
+  card_map_cache: true
+  macro_learning: true
+  macro_promote_after_successes: 3
+  macro_stale_after_failures: 2
+  sheet_batch_threshold: 30
+  stage_before_remote_write: true
+
+video:
+  default_mode: lueying
+
+  # V5 默认不再让手机实时陪看完整视频。
+  source_strategy: share_link_local
+
+  modes:
+    lueying:
+      name: 掠影
+      quality: 480p
+      keyframes: 8
+      transcript: false
+      scene_detection: false
+    tinglan:
+      name: 听澜
+      quality: 720p
+      keyframes: 10
+      transcript: true
+      scene_detection: false
+    guanlan:
+      name: 观澜
+      quality: best
+      keyframes: 24
+      transcript: true
+      scene_detection: true
+
+media:
+  enabled: true
+
+  share_link:
+    clipboard_provider: macos_pbpaste
+    poll_interval_seconds: 0.25
+    timeout_seconds: 8
+    max_copy_retries: 1
+    require_clipboard_change: true
+    probe_before_enqueue: true
+    compare_current_post_hint: true
+
+  queue:
+    path: ./runtime/media-jobs.sqlite3
+    download_workers: 2
+    analysis_workers: 2
+    harvest_ahead: 8
+    max_attempts: 3
+
+  downloader:
+    # auto | smile7up | yt_dlp
+    backend: auto
+
+    # 可选。为空时 auto 直接使用 yt-dlp。
+    smile7up_script: ""
+
+    yt_dlp_bin: yt-dlp
+    ffmpeg_bin: ffmpeg
+    ffprobe_bin: ffprobe
+
+    # 小红书网页解析需要登录态时使用。
+    cookies_from_browser: chrome
+
+    output_dir: ./runtime/media
+
+  processing:
+    pipeline: producer_consumer
+    process_as_each_download_finishes: true
+    keep_original_video: true
+    keep_audio: true
+    keep_keyframes: true
+    upload_assets_to_drive: false
+
+  transcription:
+    subtitle_first: true
+    whisper_fallback: true
+    whisper_model: small
+    whisper_device: auto
+
+  fallback:
+    # 本地获取彻底失败后才允许回退 V4 镜像视频路径。
+    mirror_video_processing: true
+
+watchdog:
+  enabled: true
+  recovery_mode: auto_connect  # auto_connect | manual
+  poll_seconds: 5
+  screenshot_every_polls: 1
+  require_frontmost: false
+  checkpoint:
+    enabled: true
+    path: ./runtime/checkpoint.json
+
+
+keepalive:
+  enabled: true
+
+  # 不写死 iPhone Mirroring 的暂停分钟数，先实测当前环境。
+  calibration:
+    enabled: true
+    samples: 3
+    poll_seconds: 5
+    max_wait_seconds: 3600
+    trigger_ratio: 0.80
+    store_path: ./runtime/idle-calibration.json
+    recalibrate_on_environment_change: true
+    recalibrate_on_unexpected_pause: true
+
+  # 只有真实业务 HID 或已验证的 safe keepalive HID 才算活动。
+  activity_clock:
+    screenshot_counts_as_activity: false
+    connection_state_counts_as_activity: false
+    screen_info_counts_as_activity: false
+    caffeinate_counts_as_keepalive: false
+    activate_counts_as_keepalive: false
+
+  safe_actions:
+    enabled: true
+    preference:
+      - business_action
+      - reversible_scroll
+      - verified_safe_tap
+    forbidden_pages:
+      - LOGIN_REQUIRED
+      - DEVICE_UNLOCK
+      - PASSWORD
+      - SECURITY_CHALLENGE
+      - UNKNOWN_UNSAFE
+      - MIRROR_RECOVERY

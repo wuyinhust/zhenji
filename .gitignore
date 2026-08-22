@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# zhenji local artifacts
+# (these are runtime-produced; users can opt-in)
+benchmarks/bench-*/fuguang/frames/*.png
+benchmarks/bench-*/fuguang/frames/*.jpg
+benchmarks/bench-*/lueying/**/*.mp4
+benchmarks/bench-*/lueying/**/frames/*.jpg
+benchmarks/bench-*/tinglan/**/*.mp4
+benchmarks/bench-*/tinglan/**/audio.mp3
+benchmarks/bench-*/tinglan/**/frames/*.jpg
+benchmarks/bench-*/guanlan/**/*.mp4
+benchmarks/bench-*/guanlan/**/audio.mp3
+benchmarks/bench-*/guanlan/**/keyframes/*.jpg
+benchmarks/bench-*/guanlan/**/scenes/*.jpg
+
+# Local config (never commit)
+secrets.yaml
+config.local.yaml
+.env
+.env.local
+
+# Cache dirs
+.huggingface/
+.cache/
+*.log
+
+# OS tmp leftovers
+*.swp
+*.swo
+*~
+
+# Personal benchmark results (large)
+/Volumes/PSSD/Projects/zhenji/hf-cache/
+/Volumes/PSSD/Projects/zhenji/audio-venv/

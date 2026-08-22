@@ -1,0 +1,3 @@
+# Optional V5 Python dependency.
+# yt-dlp and ffmpeg are recommended as system tools.
+faster-whisper>=1.0
