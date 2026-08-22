@@ -134,6 +134,7 @@ zhenji
 │   └── phone-harness (zhenji bundled, user-controlled) — v5.1 详见 §65
 ├── platforms
 │   ├── xhs            # 当前生产适配器
+│   ├── douyin         # v5.1.1 新增（v0，iesdouyin API + yt-dlp 兜底）—— 详见 §73
 │   ├── instagram      # 预留
 │   └── tiktok         # 预留
 ├── video
@@ -2202,3 +2203,68 @@ platforms:
 - 把 `benchmarks/scripts/bench.py` 与 `process_xhs_url` 整合成单一入口 `scripts/harvest.py`
 - 给 zhenji 加 `--strict` / `--relaxed` CLI flag，让用户在严格/宽松模式之间切换
 - 把 V5.x changelog 从 SKILL.md 抽出到 `CHANGELOG.md`，避免主文件越来越长
+
+
+# v5.1.1 抖音 (douyin) 适配器
+
+## 73. douyin 适配器 v0
+
+### 73.1 适配能力边界
+
+抖音水印 + X-Bogus / a_bogus 签名比小红书复杂。v5.1.1 的 v0 实现：
+
+| 能力 | 状态 | 说明 |
+|---|---|---|
+| platform_router 路由 douyin.com / iesdouyin.com / v.douyin.com | ✅ | smoke test 通过 |
+| iesdouyin API 拿 metadata（title / author / cover_url / play_url）| ✅ | 免 cookie，仅需 msToken（默认用 UA + Referer）|
+| yt-dlp Douyin extractor 拿视频本体 | ⚠️ | 需用户 Chrome 已登录 douyin web |
+| X-Bogus / a_bogus 签名 | ❌ | v0 未实现，需手动签名或 f2 集成 |
+| 视频本体下载（无水印） | ❌ | v0 通过 play_url 拿带水印版本，未做去水印 |
+
+### 73.2 抖音反爬约束（实测发现）
+
+iPhone 上抖音即使已登录，敏感操作仍触发短信验证：
+
+```
+tap 长按 video → 触发 "请输入验证码" 登录页
+tap share button → 通常需要登录态 + 短信验证
+```
+
+这是抖音平台反爬策略，**zhenji 不能绕过**。当前依赖：
+
+1. 用户手动 share → 复制链接 → 把链接给 zhenji
+2. zhenji 用 platform_router 识别为 douyin
+3. 用 iesdouyin API 拿 metadata（免登录）
+4. yt-dlp 兜底（需 Chrome cookie）
+
+### 73.3 调用方式
+
+```python
+from scripts.douyin_media import download
+from scripts.platform_router import route_url
+
+url = "https://v.douyin.com/iABCxyz/"
+route = route_url(url)  # → PlatformRoute(key="douyin", supported=True)
+dl = download(
+    url,
+    output_dir="/Users/vuyin/WorkBuddy/zhenji/staging/<post_key>",
+    mode="lueying",  # or "tinglan" / "guanlan"
+    backend="auto",  # yt_dlp first, fallback to iesdouyin
+    cookies_from_browser="chrome",
+)
+```
+
+### 73.4 四档在 douyin 的特殊说明
+
+| 档 | douyin 特殊点 |
+|---|---|
+| 浮光 | ✅ 完全支持（无需登录）|
+| 掠影 | ⚠️ 需 yt-dlp cookie 或 iesdouyin metadata + 第三方下载 |
+| 听澜 | ⚠️ 同上 |
+| 观澜 | ⚠️ 同上，且 X-Bogus 签名阻碍完整时间轴抓取 |
+
+### 73.5 v5.1.2+ 待办
+
+- 集成 `f2` (johnserf-seed/f2) Python 包，处理 X-Bogus 签名
+- 或集成 `Douyin_TikTok_Download_API` (douyin.wtf) 公开 API 服务
+- 实测 iesdouyin API 在中国 ip 上的可达性

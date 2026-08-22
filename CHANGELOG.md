@@ -1,5 +1,15 @@
 # Changelog
 
+## V5.1.1
+
+- **抖音 (douyin) 适配器 v0**：新增 `scripts/douyin_media.py`（类比 xhs_media.py）：
+  - `download_with_yt_dlp(url, mode, ...)` — 需 Chrome 已登录 douyin web
+  - `download_with_iesdouyin(url, ms_token=None)` — 免 cookie 拿 metadata（title/author/duration/cover_url/play_url），不下载视频本体
+  - `download(url, backend='auto'|'yt_dlp'|'iesdouyin', ...)` — 兜底 dispatcher
+- **platform_router 扩展**：新增 douyin / iesdouyin / v.douyin.com 三个域名路由；同时修 bug：xhs 短链 `.cn` TLD 之前未匹配（之前 v5 仅匹配 `.com`）
+- **实测发现**：iPhone 上抖音已登录但敏感操作（长按/分享/点赞）仍触发短信验证——这是抖音反爬策略，zhenji 不能绕过。依赖用户手动 share → 复制链接
+- **适配器能力边界**：v0 阶段抖音下载完整视频需 X-Bogus 签名（未实现）；当前可通过 iesdouyin API 拿 metadata + play_url，由调用方决定是否下本体
+
 ## V5.1
 
 - **phone-harness 已作为 zhenji 内置依赖**：不再要求用户单独 download/install phone-harness，调用通过 `scripts/phone_harness/` 子包完成（CLI 转发 + Python API）。
