@@ -1,0 +1,39 @@
+# XHS 真机采集配方 (Zhenji V5.2)
+# 坐标一律 normalized ratio (0-1)，运行时由 screen_info() 换算真实屏幕坐标。
+# 状态：production
+platform: xhs
+app:
+  bundle_id: com.xingin.xhs
+flow: harvest_share_link
+status: production
+notes: >
+  小红书生产可用。分享按钮为详情页右上角箭头；分享面板内"复制链接"为语义点击，
+  不依赖固定坐标。需 Chrome 已登录 xhs web 才能下载视频本体（掠影/听澜/观澜）。
+states:
+  - VIDEO_PAGE
+  - SHARE_PANEL
+  - CLIPBOARD_READY
+actions:
+  - name: open_share
+    type: tap
+    target:
+      coordinate:
+        type: normalized
+        x_ratio: 0.895
+        y_ratio: 0.108
+    validation:
+      - kind: share_panel_visible
+        params: {}
+  - name: copy_link
+    type: semantic_tap
+    target:
+      text:
+        zh: 复制链接
+    validation:
+      - kind: clipboard_changed
+        params: {}
+      - kind: url_match
+        params:
+          domains:
+            - xhslink.com
+            - xiaohongshu.com

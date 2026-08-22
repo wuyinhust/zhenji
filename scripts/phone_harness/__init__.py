@@ -1,4 +1,4 @@
-"""phone-harness adapter for zhenji v5.1.2.
+"""phone-harness adapter for zhenji v5.2.
 
 准确说法（v5.1.2 修正 v5.1.1 文案）：
 - phone-harness 还是外部 CLI；本子包是 zhenji 内置的 adapter / wrapper。
@@ -28,7 +28,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-__version__ = "5.1.2"
+__version__ = "5.2"
 
 # ============================================================
 # 1. phone-harness 探测与初始化

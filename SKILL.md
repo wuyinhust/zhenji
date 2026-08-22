@@ -1,18 +1,24 @@
 ---
 name: zhenji
-version: 5.1
+version: 5.2
 description: 真机驱动的社交媒体内容情报 Skill。当前首先适配小红书，并为 Instagram（照片与短视频社交平台）、TikTok（短视频平台）等保留平台适配层；通过真实 iPhone 采集账号、作品、视频、公开评论、搜索与推荐流信号，结构化保存到 Google Sheets（谷歌表格）和 Google Drive（谷歌云端硬盘），支持高效视频理解、检索、账号诊断、竞品分析、模式挖掘、选题、实验与复盘。默认只读，不自动点赞、关注、评论、私信或发布，不绕过平台安全验证。
 ---
 
 # 甄姬（zhenji）
 
-> **v5.1 · 2026-08-22**
+> **v5.2 · 2026-08-22**
 >
-> 主要变更：
+> 主要变更（详见 `CHANGELOG.md`）：
+> - **P0 MediaFetchResult 语义修正**：删除误导性的 `ok` 属性，新增 `succeeded`（status 不在 {FAILED,BLOCKED}）；业务层必须用 `acceptable_for_mode(mode)` 判断任务是否达成。
+> - **P0 Worker mode 强校验**：`media_worker` 改用 `result.acceptable`，档位约束不再依赖模糊的 ok。
+> - **P1 Action Recipe（真机操作知识库）**：`scripts/action_recipe/` + `references/platform-recipes/*.yaml` 把"某 App 怎么拿分享链接"固化为声明式 recipe，替代每次截图+OCR；坐标强制 normalized ratio，validator 拒绝绝对像素；目标 95% Recipe / 5% Vision。
+> - **P1 平台状态声明**：`references/platform-status.yaml` 区分 production / beta / router_only，避免 router 支持被误读为业务支持。
+> - **P1 测试 + CI**：新增 `test_media_fetch_result` / `test_action_recipe` / `test_platform_status` / `test_douyin_resolver`。
+>
+> v5.1 主要变更：
 > - `phone-harness` 已 bundled（不再要求用户单独 download；调用通过 `scripts/phone_harness/` 子包）
 > - 去掉 phone-harness 强约束（v5 中"必须"、"严禁"的限制改为建议）
 > - 新增「浮光 (fuguang)」第四档（post_followup + V4 mirror fallback 纯视觉摘要）
-> - 新增 `benchmarks/scripts/bench.py` 四档 wall-clock 对比框架
 > - 工程加速固化：PSSD venv / `HF_ENDPOINT=hf-mirror.com` / 卸 hf-xet / `shutil.rmtree`
 >
 > 详见 `CHANGELOG.md` 与本文件末尾 §v5.1 changelog。
@@ -1707,6 +1713,55 @@ scripts/clipboard_link.py
 scripts/share_link_flow.py
 ```
 
+### 54.2 Action Recipe（真机操作知识库，V5.2）
+
+V5.2 把"在 App 里怎么拿到分享链接"从**截图 + OCR 视觉探索**固化为**声明式 recipe**，让真机采集从"每次重新规划"变为"加载配方即执行"。
+
+执行链路：
+
+```text
+Platform Knowledge (references/platform-recipes/<platform>.yaml)
+    ↓ ActionRecipeEngine.load
+    ↓ engine.run(harness, validator)
+逐 action：
+    screen_info() → 当前窗口 LiveBounds
+    normalized ratio (0-1) → ratio_to_screen() → 真实屏幕坐标
+    harness.tap / semantic_tap / open_app ...
+    validator 校验状态（share_panel_visible / clipboard_changed / url_match）
+    ↓
+成功：拿到分享链接
+失败：抛 RecipeStepError → 调用方转视觉探索 fallback（仅 5% 路径）
+```
+
+硬规则：
+
+- 坐标**只允许 normalized ratio (0-1)**；任何绝对像素（x:1320, y:850）被 `validator` 直接拒绝。运行时由 `screen_info()` 拿窗口 bounds 换算真实坐标。
+- 每个 action 必须至少一个 validation；无校验则无法确认状态，应走视觉探索。
+- harness / validator 以 Protocol 注入，离线可测（FakeHarness）。
+- 平台差异只存在于 Action Recipe 与 Media Adapter 两层；Queue / Worker / Pipeline / Analysis 全部共用。
+
+`references/platform-recipes/` 现状：
+
+```text
+xhs.yaml       production
+douyin.yaml    beta（坐标待真机校准）
+instagram.yaml router_only 骨架（adapter 未实现）
+tiktok.yaml    router_only 骨架（adapter 未实现）
+```
+
+平台状态以 `references/platform-status.yaml` 为准（production / beta / router_only）。
+
+实现：
+
+```text
+scripts/action_recipe/schema.py
+scripts/action_recipe/validator.py
+scripts/action_recipe/engine.py
+references/platform-recipes/*.yaml
+references/platform-status.yaml
+scripts/platform_status.py
+```
+
 ## 55. 真机与媒体分析彻底解耦
 
 禁止默认串行：
@@ -1991,7 +2046,14 @@ schemas/google-sheets-schema-v5.json
 
 ## 62. 跨平台准备
 
-V5 的 Link Harvester 与 Media Queue 不绑定小红书。
+V5 的 Link Harvester 与 Media Queue 不绑定小红书。V5.2 进一步把平台专属逻辑收敛到两层：
+
+```text
+Action Recipe   → 真机怎么操作（references/platform-recipes/*.yaml + scripts/action_recipe/）
+Media Adapter   → 内容怎么获取（scripts/media_adapters.py + xhs_adapter / douyin_adapter）
+```
+
+其余 Queue / Worker / Pipeline / Analysis / Storage 全部平台无关、共用。
 
 统一入口：
 

@@ -133,42 +133,43 @@ schemas/google-sheets-schema-v4.json
 
 ## 平台支持（V5.1+ 多平台）
 
-| 平台 | 状态 | Adapter |
-|---|---|---|
-| XHS 小红书 | Production | `scripts/xhs_adapter.py` |
-| Douyin 抖音 | Experimental v0 | `scripts/douyin_adapter.py` |
-| Instagram | Planned | router_ready |
-| TikTok | Planned | router_ready |
+> 平台状态以 `references/platform-status.yaml` 为准（区分 "router 识别" 与 "业务支持"）。
 
-平台架构：
+| 平台 | 状态 | Adapter + Recipe |
+|---|---|---|
+| XHS 小红书 | production | `scripts/xhs_adapter.py` + `references/platform-recipes/xhs.yaml` |
+| Douyin 抖音 | beta | `scripts/douyin_adapter.py` + `references/platform-recipes/douyin.yaml` |
+| Instagram | router_only | router 识别，adapter / recipe 未实现 |
+| TikTok | router_only | router 识别，adapter / recipe 未实现 |
+
+平台架构（V5.2）：**平台差异只存在于 Action Recipe 与 Media Adapter 两层**
 
 ```text
-phone-harness (内置 adapter)
+                    zhenji
+
+                 Runtime Layer
+
+        ┌──────────────┬──────────────┐
+ Action Recipe                 Media Adapter
+  scripts/action_recipe/        scripts/media_adapters.py
+  references/platform-recipes/   xhs_adapter / douyin_adapter
+  真机怎么操作                   内容怎么获取
+        └──────────────┬──────────────┘
+              Intelligence Layer
+          内容分析 / 爆款拆解 / 竞品分析 / 运营建议
+
+真机拿链接（Action Recipe 驱动）：
+phone-harness (screen_info → ratio 坐标 → tap / semantic_tap)
+    ↓ 状态校验（share_panel_visible / clipboard_changed / url_match）
+Share Link Harvester → platform_router → Adapter Registry
     ↓
-Share Link Harvester
+MediaFetchResult (metadata_only / media_ready)
+    ↓ Media Queue → Worker → Pipeline
     ↓
-platform_router         (scripts/platform_router.py)
-    ↓
-URL Resolver            (DouyinAdapter.resolve_url)
-    ↓
-Adapter Registry        (scripts/media_adapters.py)
- ┌─────────┼──────────┐
- XHS    Douyin       (future IG/TT)
-  ↓        ↓
-MediaFetchResult       (scripts/media_adapter_protocol.py)
-    ↓
-Media Queue            (scripts/media_queue.py)
-    ↓
-Generic Media Worker   (scripts/media_worker.py)
-    ↓
-Local Media Pipeline   (scripts/media_pipeline.py)
-    ↓
-浮光 / 掠影 / 听澜 / 观澜
-    ↓
-Batch Storage (Sheets / Drive / 本地)
+浮光 / 掠影 / 听澜 / 观澜 → Batch Storage (Sheets / Drive / 本地)
 ```
 
-核心原则：平台差异只留在 Adapter 层；Queue / Worker / FFmpeg / Whisper / Analysis 全部共用。
+核心原则：平台差异只留在 Action Recipe 与 Adapter 层；Queue / Worker / FFmpeg / Whisper / Analysis / Storage 全部共用。
 
 ## V5 · 真机拿链接，本地看视频
 
@@ -290,11 +291,17 @@ zhenji/
 │   ├── media_adapters.py     ← V5.1+ ADAPTERS registry
 │   ├── media_pipeline.py     ← V5.1+ generic, no platform hardcode
 │   ├── media_queue.py
-│   ├── media_worker.py       ← V5.1+ generic, registry-based
+│   ├── media_worker.py       ← V5.1+ generic, registry-based (acceptable_for_mode 校验)
+│   ├── platform_status.py    ← V5.2 平台状态声明加载器
 │   ├── phone_harness/        ← V5.1+ built-in phone-harness adapter
 │   │   ├── __init__.py
-│   │   ├── geometry.py       ← dynamic 窗口坐标
+│   │   ├── geometry.py       ← dynamic 窗口坐标 + ratio_to_screen
 │   │   └── sentinel.py       ← 剪贴板哨兵
+│   ├── action_recipe/        ← V5.2 真机操作知识库
+│   │   ├── __init__.py
+│   │   ├── schema.py         ← Action / Target / Validation / Recipe
+│   │   ├── validator.py      ← 强制 ratio 坐标、禁绝对值、校验结构
+│   │   └── engine.py         ← RecipeEngine (注入 harness/validator)
 │   ├── phone_helpers.py
 │   ├── platform_router.py    ← V5.1+ strict 域名匹配
 │   ├── runtime_cache.py
@@ -306,6 +313,14 @@ zhenji/
 │   ├── write_buffer.py
 │   ├── xhs_adapter.py        ← V5.1+ XhsAdapter (wraps xhs_media)
 │   └── xhs_media.py
+├── references/
+│   ├── ...
+│   ├── platform-status.yaml          ← V5.2 平台状态声明
+│   └── platform-recipes/             ← V5.2 真机操作 recipe
+│       ├── xhs.yaml
+│       ├── douyin.yaml
+│       ├── instagram.yaml
+│       └── tiktok.yaml
 ├── schemas/
 │   ├── google-sheets-schema-v2.json
 │   ├── google-sheets-schema-v3.json
@@ -317,7 +332,11 @@ zhenji/
 │   ├── test_platform_router.py        ← V5.1+
 │   ├── test_douyin_media.py           ← V5.1+
 │   ├── test_media_adapter_registry.py ← V5.1+
-│   └── test_phone_harness_geometry.py ← V5.1+
+│   ├── test_phone_harness_geometry.py ← V5.1+
+│   ├── test_media_fetch_result.py    ← V5.2 P0 语义
+│   ├── test_action_recipe.py         ← V5.2 Action Recipe
+│   ├── test_platform_status.py       ← V5.2 平台状态
+│   └── test_douyin_resolver.py       ← V5.2 resolver 测试
 └── .github/workflows/test.yml          ← V5.1+ minimal CI
 ```
 

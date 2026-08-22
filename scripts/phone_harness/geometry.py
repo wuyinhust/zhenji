@@ -134,3 +134,22 @@ def live_bounds_from_screen_info(info: dict[str, object]) -> LiveBounds:
         width=int(info.get("width", DEFAULT_MIRROR_WIDTH)),
         height=int(info.get("height", DEFAULT_MIRROR_HEIGHT)),
     )
+
+
+def ratio_to_screen(
+    rx: float,
+    ry: float,
+    bounds: LiveBounds,
+) -> tuple[float, float]:
+    """将 normalized ratio (0-1) 换算为当前窗口的真实屏幕坐标。
+
+    V5.2 坐标唯一真理源：除了 ratio 不允许任何绝对像素。
+    计算：rx * bounds.width + bounds.offset_x, ry * bounds.height + bounds.offset_y
+    """
+    if not (0.0 <= rx <= 1.0 and 0.0 <= ry <= 1.0):
+        raise ValueError(f"ratio must be within [0,1], got ({rx},{ry})")
+    if bounds.width <= 0 or bounds.height <= 0:
+        raise ValueError(f"invalid live bounds: {bounds.as_dict()}")
+    sx = rx * bounds.width + bounds.offset_x
+    sy = ry * bounds.height + bounds.offset_y
+    return (sx, sy)

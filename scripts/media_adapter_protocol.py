@@ -35,6 +35,16 @@ from enum import Enum
 from typing import Any, Protocol, runtime_checkable
 
 
+class MediaNotReadyError(Exception):
+    """Raised when a fetch result cannot satisfy the requested mode.
+
+    P0 (v5.2): Worker / pipeline must distinguish:
+      - `succeeded`   (status not in {FAILED, BLOCKED})  → 没硬失败
+      - `acceptable_for_mode(mode)`                      → 对该档位"够用"
+    A metadata_only result is `succeeded=True` but NOT `acceptable_for_mode("lueying")`.
+    """
+
+
 class FetchStatus(str, Enum):
     METADATA_ONLY = "metadata_only"
     MEDIA_READY = "media_ready"
@@ -83,11 +93,21 @@ class MediaFetchResult:
         return self.status == FetchStatus.MEDIA_READY
 
     @property
-    def ok(self) -> bool:
-        """兼容 V5.1 旧调用方：`ok == metadata_ready` (NOT media_ready)."""
-        return self.metadata_ready
+    def succeeded(self) -> bool:
+        """任务未硬失败（status 不在 {FAILED, BLOCKED}）。
+
+        注意：succeeded 仅表示"没砸"，不等价于"对该档位够用"。
+        - metadata_only → succeeded=True，但掠影/听澜/观澜拒收。
+        - 业务层判断"任务是否达成"必须用 `acceptable_for_mode(mode)`，
+          不要用 succeeded，更不要用已删除的 `ok`。
+        """
+        return self.status not in {FetchStatus.FAILED, FetchStatus.BLOCKED}
 
     def acceptable_for_mode(self, mode: str) -> bool:
+        """该结果是否满足指定档位的最低要求。
+
+        浮光接受 metadata_only / media_ready；掠影/听澜/观澜必须 media_ready。
+        """
         return self.status in MODE_REQUIREMENTS.get(mode, set())
 
     def to_dict(self) -> dict[str, Any]:

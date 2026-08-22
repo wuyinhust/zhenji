@@ -66,7 +66,10 @@ def main() -> int:
                 whisper_model=args.whisper_model,
             )
 
-            if result.ok:
+            # P0 (v5.2): 用 acceptable_for_mode 做档位强校验，而非模糊的 result.ok。
+            # acceptable=True 表示 fetch 结果满足该 job.mode 的最低要求
+            # （浮光可接受 metadata_only；掠影/听澜/观澜必须 media_ready）。
+            if result.acceptable:
                 q.mark(
                     job.job_id,
                     "done",
@@ -88,7 +91,7 @@ def main() -> int:
                 q.mark(
                     job.job_id, state,
                     backend=result.backend,
-                    error=result.error,
+                    error=result.error or f"not_acceptable_for_mode:{job.mode}",
                 )
         except Exception as exc:
             state = "retry" if job.attempts < 3 else "failed"

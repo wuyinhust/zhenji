@@ -18,6 +18,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install test deps
+        run: |
+          # PyYAML 仅用于加载真实 recipe YAML（test_action_recipe 的 yaml 子测试）。
+          # 媒体模块本身仅依赖标准库；缺 pyyaml 时该子测试自动 skip。
+          pip install --quiet pyyaml || echo "pyyaml install skipped"
       - name: Run unit tests
         run: |
           # 媒体模块 (xhs_media/douyin_media) 仅依赖标准库，无需 pip install。

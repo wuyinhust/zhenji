@@ -1,0 +1,46 @@
+# TikTok 真机采集配方 (Zhenji V5.2)
+# 状态：router_only —— 仅声明流程骨架，adapter 未实现，不可执行。
+platform: tiktok
+app:
+  bundle_id: com.zhiliaoapp.musically
+flow: harvest_share_link
+status: router_only
+notes: >
+  router 已识别 tiktok.com，但 adapter 未实现、无真实机采集能力。
+  本 recipe 仅为流程骨架（声明目标），engine.load 可校验结构，
+  但执行前必须先实现 tiktok adapter + 真机校准坐标。
+states:
+  - VIDEO_PAGE
+  - SHARE_PANEL
+  - CLIPBOARD_READY
+actions:
+  - name: open_app
+    type: open_app
+    target:
+      bundle_id: com.zhiliaoapp.musically
+    validation:
+      - kind: app_foreground
+        params: {}
+  - name: open_share
+    type: tap
+    target:
+      coordinate:
+        type: normalized
+        x_ratio: 0.9
+        y_ratio: 0.12
+    validation:
+      - kind: share_panel_visible
+        params: {}
+  - name: copy_link
+    type: semantic_tap
+    target:
+      text:
+        en: Copy link
+    validation:
+      - kind: clipboard_changed
+        params: {}
+      - kind: url_match
+        params:
+          domains:
+            - tiktok.com
+            - vt.tiktok.com

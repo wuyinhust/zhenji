@@ -1,5 +1,19 @@
 # Changelog
 
+## V5.2
+
+真机操作知识库：v5.1.2 解决了"不同平台的视频如何统一处理"，v5.2 解决"不同平台的真机操作如何统一执行"。
+
+- **P0 MediaFetchResult 语义修正**：删除误导性的 `ok` 属性（原 `ok == metadata_ready`，曾让业务层误以为 metadata_only 即成功）。新增 `succeeded`（status 不在 {FAILED, BLOCKED}）与保留 `metadata_ready` / `media_ready` / `acceptable_for_mode(mode)`。语义分层：succeeded = 没硬失败；acceptable_for_mode = 对该档位够用（浮光可接受 metadata_only，掠影/听澜/观澜必须 media_ready）。新增 `MediaNotReadyError`。
+- **P0 Worker mode 强校验**：`media_worker.py` 由 `result.ok` 改为 `result.acceptable`（PipelineResult 新增 `acceptable` 字段，显式等于 `fetch.acceptable_for_mode(mode) 且非浮光时本地视频存在`）。档位约束不再依赖模糊的 ok。
+- **P1 Action Recipe 系统**：新增 `scripts/action_recipe/`（schema.py / validator.py / engine.py）——把"某 App 里怎么拿分享链接"固化为声明式 recipe，替代每次截图+OCR 视觉探索。执行链路：Platform Knowledge → load → engine.run(harness, validator) → 逐 action 换算坐标+执行+状态校验 → 失败才转视觉探索 fallback。目标 95% Recipe / 5% Vision。
+  - 坐标**强制 normalized ratio (0-1)**，validator 拒绝任何绝对像素（x:1320,y:850 直接报错）；运行时由 `screen_info()` 拿窗口 bounds → `geometry.ratio_to_screen()` 换算真实坐标。
+  - harness / validator 以 Protocol 注入，离线可测（FakeHarness）。
+- **P1 平台 Recipe 声明**：`references/platform-recipes/{xhs,douyin,instagram,tiktok}.yaml`——xhs=production，douyin=beta（坐标待真机校准），instagram/tiktok=router_only 骨架（adapter 未实现）。
+- **P1 平台状态声明**：新增 `references/platform-status.yaml` + `scripts/platform_status.py`（纯标准库解析）——区分 production / beta / router_only，避免 router 支持被误读为业务支持。
+- **P1 Douyin resolver 测试**：`tests/test_douyin_resolver.py` 覆盖正常（v.douyin.com → www.douyin.com/video/<id>）与异常（redirect timeout / 验证码或登录页 / 无 aweme_id），全部离线 monkeypatch。
+- **P1 测试 + CI**：新增 `tests/test_media_fetch_result.py`、`tests/test_action_recipe.py`、`tests/test_platform_status.py`；CI 增加 `pip install pyyaml`（仅 recipe YAML 加载子测试需要，缺则 skip）。
+
 ## V5.1.2
 
 工程收口（源自 v5.1.1 审查的 P0/P1/P2 13 项）。**纯重构，无行为回退。**

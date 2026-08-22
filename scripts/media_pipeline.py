@@ -32,6 +32,7 @@ VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
 @dataclass
 class PipelineResult:
     ok: bool
+    acceptable: bool
     platform: str
     backend: str | None
     mode: str
@@ -83,7 +84,7 @@ def process_media_url(
     adapter = get_adapter(platform)
     if adapter is None:
         return PipelineResult(
-            ok=False, platform=platform, backend=None, mode=mode,
+            ok=False, acceptable=False, platform=platform, backend=None, mode=mode,
             fetch_status="failed",
             video_path=None, audio_path=None, keyframes=[], scene_frames=[],
             transcript_txt=None, transcript_json=None, metadata=None,
@@ -103,10 +104,10 @@ def process_media_url(
         **adapter_kwargs,
     )
 
-    # 档位强约束
+    # 档位强约束：metadata_only 对掠影/听澜/观澜 不可接受
     if not fetch.acceptable_for_mode(mode):
         return PipelineResult(
-            ok=False, platform=platform, backend=fetch.backend, mode=mode,
+            ok=False, acceptable=False, platform=platform, backend=fetch.backend, mode=mode,
             fetch_status=fetch.status.value,
             video_path=None, audio_path=None, keyframes=[], scene_frames=[],
             transcript_txt=None, transcript_json=None,
@@ -120,7 +121,7 @@ def process_media_url(
     video = _pick_video(fetch.files)
     if mode != "fuguang" and not video:
         return PipelineResult(
-            ok=False, platform=platform, backend=fetch.backend, mode=mode,
+            ok=False, acceptable=False, platform=platform, backend=fetch.backend, mode=mode,
             fetch_status=fetch.status.value,
             video_path=None, audio_path=None, keyframes=[], scene_frames=[],
             transcript_txt=None, transcript_json=None,
@@ -190,7 +191,7 @@ def process_media_url(
     )
 
     return PipelineResult(
-        ok=True, platform=platform, backend=fetch.backend, mode=mode,
+        ok=True, acceptable=True, platform=platform, backend=fetch.backend, mode=mode,
         fetch_status=fetch.status.value,
         video_path=video, audio_path=audio_path,
         keyframes=keyframes, scene_frames=scene_frames,

@@ -94,7 +94,11 @@ class DouyinAdapter:
 
         if SHORT_LINK_RE.match(url):
             # 短链：跟 redirect 到完整 URL，再提取 aweme_id
-            final = _follow_redirect(url)
+            try:
+                final = _follow_redirect(url)
+            except Exception as exc:
+                logger.warning("douyin short-link resolve failed for %s: %s", url, exc)
+                final = url
             canonical = final
             aweme_id = _extract_aweme_id(final)
             # 重定向链有时返回 /share/video/<id>，再正则一次

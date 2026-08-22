@@ -1,0 +1,39 @@
+# 抖音真机采集配方 (Zhenji V5.2)
+# 坐标一律 normalized ratio (0-1)。状态：beta（坐标待真机校准）。
+platform: douyin
+app:
+  bundle_id: com.ss.iphone.ugc.Aweme
+flow: harvest_share_link
+status: beta
+notes: >
+  抖音 beta。分享入口在视频详情页右侧（图标非固定文案），用 normalized 坐标点击；
+  "复制链接"为语义点击。抖音反爬强，iesdouyin 仅 metadata，yt-dlp 需 Chrome 登录。
+  坐标 x_ratio/y_ratio 为初版估算，需真机校准后再标记 production。
+states:
+  - VIDEO_PAGE
+  - SHARE_PANEL
+  - CLIPBOARD_READY
+actions:
+  - name: open_share
+    type: tap
+    target:
+      coordinate:
+        type: normalized
+        x_ratio: 0.92
+        y_ratio: 0.10
+    validation:
+      - kind: share_panel_visible
+        params: {}
+  - name: copy_link
+    type: semantic_tap
+    target:
+      text:
+        zh: 复制链接
+    validation:
+      - kind: clipboard_changed
+        params: {}
+      - kind: url_match
+        params:
+          domains:
+            - douyin.com
+            - v.douyin.com

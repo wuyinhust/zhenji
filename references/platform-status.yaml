@@ -1,0 +1,21 @@
+# 平台状态声明 (Zhenji V5.2)
+# 区分 "router 识别" 与 "业务支持"，避免误读。
+#   production    → adapter + 真机 recipe 就绪，可端到端
+#   beta          → adapter 就绪，recipe 待真机校准/部分能力
+#   router_only   → 仅 URL router 识别，adapter/recipe 未实现
+xhs:
+  status: production
+  adapter: ready
+  notes: "小红书生产可用；需 Chrome 登录 xhs web 才能下载视频本体。"
+douyin:
+  status: beta
+  adapter: ready
+  notes: "抖音 beta；iesdouyin 仅 metadata，yt-dlp 需 Chrome 登录 douyin web。"
+instagram:
+  status: router_only
+  adapter: not_implemented
+  notes: "router 已识别 instagram.com，adapter 未实现。"
+tiktok:
+  status: router_only
+  adapter: not_implemented
+  notes: "router 已识别 tiktok.com，adapter 未实现。"
