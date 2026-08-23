@@ -1,255 +1,400 @@
-# 甄姬（zhenji）
+# 甄姬 zhenji
 
-> **流眄监其变，采珠存其真，流精辨其势，殊观得其机。**
+> **真机驱动的社交媒体内容情报 Skill**  
+> 流眄监其变，采珠存其真，流精辨其势，殊观得其机。
 
-「甄姬」取“真机”谐音，是一个以真实 iPhone 为观察入口的社交媒体内容情报技能。当前首个生产适配器为小红书，后续可扩展到 Instagram（照片与短视频社交平台）、TikTok（短视频平台）等。
+甄姬（`zhenji`，取“真机”谐音）让 AI 通过一台真实 iPhone 观察社交媒体 App，把账号、作品、公开视频、评论和互动信号转成可检索、可复盘的结构化内容情报。
 
-## 洛神四象
+它不是一个单纯的“下载器”，也不是一个网页爬虫。它把两类能力组合在一起：
 
-| 能力 | 《洛神赋》意象 | 系统职责 |
+1. **真机操作层**：通过 iPhone Mirroring + `phone-harness` 看到真实 App、执行点击/滑动/复制链接，并用 Action Recipe 复用稳定动作；
+2. **媒体与情报层**：拿到分享链接后，在 Mac 本地异步下载、抽帧、转录、分析，再进入账号监控、竞品研究、选题和复盘流程。
+
+当前版本：**5.2.1**。
+
+---
+
+## 适合做什么
+
+甄姬适合需要“真实 App 环境 + 大批量内容研究”的任务，例如：
+
+- 持续监控一组小红书账号的新增作品和互动变化；
+- 批量浏览抖音账号/推荐流，快速取得视频分享链接并在 Mac 本地分析；
+- 建立竞品内容数据库：标题、正文、视频结构、评论需求、互动快照；
+- 从几十到几百条视频里先快速筛选，再对高价值内容做完整转录和镜头分析；
+- 将长期观察结果沉淀为 Pattern（模式）、Topic（选题）、Experiment（实验）和 Review（复盘）；
+- 为后续 Instagram / TikTok 海外内容研究复用同一套真机操作与媒体处理架构。
+
+如果任务可以直接通过稳定网页/API 完成，没有必要使用真机；甄姬的价值在于**需要真实手机 App 状态、真实账号环境或移动端界面时**。
+
+---
+
+## 当前平台支持
+
+| 平台 | 当前状态 | 真机 Action Recipe | Media Adapter | 说明 |
+|---|---|---:|---:|---|
+| 小红书 XHS | **production** | ✅ | ✅ | 当前主要生产平台 |
+| 抖音 Douyin | **beta** | ✅ | ✅ / 部分能力受平台登录与验证影响 | 已接入统一流水线 |
+| Instagram | **router_only** | 骨架 | 未完成 | URL 路由与 Recipe 结构已预留 |
+| TikTok | **router_only** | 骨架 | 未完成 | URL 路由与 Recipe 结构已预留 |
+
+平台状态的机器可读定义见：`references/platform-status.yaml`。
+
+> `router_only` 不等于“已经支持采集”。它表示平台已经进入统一架构，但生产 Adapter 尚未完成。
+
+---
+
+## 它是怎么工作的
+
+```text
+真实 iPhone App
+     ↓
+phone-harness
+看屏幕 / OCR / 点击 / 滑动 / 复制链接
+     ↓
+Action Recipe
+已知动作直接执行；异常时才视觉探索
+     ↓
+Share Link Harvester
+校验剪贴板变化 + 平台 URL
+     ↓
+Platform Router
+     ↓
+Media Adapter Registry
+XHS / Douyin / future IG / TikTok
+     ↓
+SQLite Media Queue
+     ↓
+Mac 本地 Worker 并行处理
+下载 / 抽帧 / 音频 / Whisper / Scene Detection
+     ↓
+浮光 / 掠影 / 听澜 / 观澜
+     ↓
+Facts → Features → Knowledge
+     ↓
+Google Sheets / Google Drive / 本地证据
+```
+
+### 为什么不让 AI 一直“看手机视频”
+
+手机时间是整个系统最贵的资源。V5 开始，视频默认流程是：
+
+```text
+手机只负责：发现作品 → 分享 → 复制真实链接 → 继续下一条
+Mac 负责：下载 → 转录 → 抽帧 → 分析 → 入库
+```
+
+这样可以边采链接、边下载、边识别、边分析，而不是让 iPhone 等完整视频播放完再处理下一条。
+
+---
+
+## 四档视频理解
+
+甄姬不会对所有视频都做最重的分析，而是按成本分四档：
+
+| 模式 | 用途 | 本地媒体要求 |
 |---|---|---|
-| **流眄** | 「流眄乎洛川」 | 真机监测：观察账号、作品、评论、搜索与推荐流 |
-| **采珠** | 「或采明珠，或拾翠羽」 | 内容入库：结构化保存事实、时间序列和证据 |
-| **流精** | 「转眄流精」 | 模式分析：账号诊断、内容归因、评论洞察、模式挖掘 |
-| **殊观** | 「俯则未察，仰以殊观」 | 运营发现：选题、建议、实验与周期复盘 |
+| **浮光 fuguang** | 真机快速判断“值不值得继续看” | 可仅 metadata / 真机视觉 |
+| **掠影 lueying** | 大样本批量初筛 | 低成本本地视频 + 6–12 个代表帧 |
+| **听澜 tinglan** | 大多数口播、知识、测评、剧情解说 | 本地视频 + 完整音频转录 + 少量关键帧 |
+| **观澜 guanlan** | 高价值样本、镜头结构、复刻研究 | 完整视频 + 转录 + Scene Detection + 时间轴 |
+
+默认升级路径：
 
 ```text
-流眄 → 真机观察
+全部样本
   ↓
-采珠 → 结构化保存
-  ↓
-流精 → 模式与规律
-  ↓
-殊观 → 选题与实验
-  ↓
-真实结果重新进入流眄
+浮光 / 掠影
+  ↓ 高价值
+听澜
+  ↓ 需要镜头级研究
+观澜
 ```
 
-二级术语：**复形 · 检索**、**离合 · 趋势**、**绵思 · 长期记忆**、**陈纲 · 归纳**。
+---
 
+# 安装
 
+## 1. 环境要求
 
-## 视频模式（V5.1+ 四档体系）
+当前真机 iPhone 工作流要求：
 
-V5.1.1 起，V5 的「掠影 / 听澜 / 观澜」扩充为四档：
+- macOS Sequoia 或更新版本；
+- 可正常使用 Apple **iPhone Mirroring（iPhone 镜像）**；
+- Python 3.10+；
+- 一台已经与 Mac 配对的 iPhone；
+- Terminal / Codex / Claude Code 所在进程获得 macOS **Accessibility（辅助功能）** 与 **Screen Recording（屏幕录制）** 权限。
+
+媒体流水线建议安装：
+
+```bash
+brew install yt-dlp ffmpeg
+```
+
+需要本地 Whisper 转录时：
+
+```bash
+python3 -m pip install faster-whisper
+```
+
+Action Recipe YAML 建议安装：
+
+```bash
+python3 -m pip install pyyaml
+```
+
+---
+
+## 2. Clone 甄姬
+
+```bash
+git clone https://github.com/wuyinhust/zhenji.git
+cd zhenji
+```
+
+---
+
+## 3. phone-harness 已完整包含在仓库里
+
+从 5.2.1 起，甄姬不再只放一个 wrapper。
+
+仓库内完整包含固定版本：
 
 ```text
-浮光 fuguang
-真机快速陪看，不下载，0 网络，0 风控，~35s/视频
-    适用：决定值不值得看
-    ↓
-掠影 lueying
-480p 本地副本 + 6–12 关键帧
-    ~4.5s/视频（含本地副本已缓存）
-    适用：批量筛选 + 看产品包装 / OCR
-    ↓
-听澜 tinglan
-720p + 本地音频 + 完整转录（faster-whisper small）
-    ~20s/视频（模型已缓存）
-    适用：要全文本分析、口播抓字
-    ↓
-观澜 guanlan
-best 视频 + medium 转录 + 24 帧 + scene detection
-    ~70s/视频（模型已缓存）
-    适用：复刻结构、入 Pattern 库
+vendor/phone-harness/
 ```
 
-四档对 `MediaFetchResult.status` 的最低要求：
-
-| 档 | 接受状态 |
-|---|---|
-| fuguang | `metadata_only` 或 `media_ready` |
-| lueying | `media_ready` |
-| tinglan | `media_ready` |
-| guanlan | `media_ready` |
-
-运行时同时启用：
+上游来源：
 
 ```text
-Observation Cache（观察缓存）  → 同一屏只 OCR 一次
-Card Map（卡片地图）           → 同一列表布局不重复探索
-Batch Write（批量写入）        → 一批内容集中修改工作簿
-Helper Macro（辅助宏）          → 重复成功动作自动复用
+https://github.com/ShawnPana/phone-harness
+pinned commit: 47f37a6dd5baae9f10f16e21e50a6898ee42cd22
+license: MIT
 ```
 
-对应文件：
+包含上游的：
 
 ```text
-references/video-modes.md
-references/runtime-performance.md
-references/helper-macros.md
-scripts/runtime_cache.py
-scripts/write_buffer.py
-scripts/action_macros.py
-scripts/video_modes.py
-scripts/phone_helpers.py
-schemas/google-sheets-schema-v3.json
+README.md
+SKILL.md
+install.md
+onboarding.md
+phone-harness launcher
+pyproject.toml
+agent-workspace/
+src/phone_harness/
+LICENSE
 ```
 
+也就是说，一次 clone 就已经取得甄姬所需的完整 phone-harness 源码快照。
 
-## V5.1 · phone-harness 内置 adapter
+安装它的 Python 依赖：
 
-V5.1 把 phone-harness 接入方式重新定义：
+```bash
+python3 -m pip install -e vendor/phone-harness
+```
 
-- 不再要求用户从 codeload.github.com 单独 download
-- zhenji 内置 `scripts/phone_harness/` adapter，运行时探测外部 CLI
-- 找不到 phone-harness 时给清晰提示让用户从 WorkBuddy Skill marketplace 安装
-- v5 中"必须 idle calibration / 必须 input guard"等强约束改为可配置，
-  `PHONE_HARNESS_STRICT=1` 恢复严格行为
+然后检查：
 
-V5.1.2 重要修正：
+```bash
+./vendor/phone-harness/phone-harness --doctor ios
+```
 
-- "bundled" 措辞改为"内置 adapter"——实际仍依赖外部 CLI
-- dynamic geometry：默认常量仅 fallback，运行时必须 `screen_info()` 拿真实窗口
-- 移除运行时固定镜像偏移作为 global coordinate
-
-V4 在 V3 性能优化之上新增真正的长批处理运行时：
+甄姬运行时的 phone-harness 查找顺序为：
 
 ```text
-Idle Calibration  → 实测当前 iPhone Mirroring 空闲暂停阈值
-Real Input Clock   → 只统计真实 HID 输入
-Safe Keepalive     → 暂停前执行当前页面已验证的无副作用真实输入
-Watchdog           → 持续监测镜像与页面状态
-Auto Recovery      → 明确恢复页自动 Connect / Continue
-Checkpoint         → 异常保存断点
-Cache Invalidate   → 恢复后重建窗口、OCR 与卡片状态
+1. PHONE_HARNESS_BIN 显式指定
+2. vendor/phone-harness/phone-harness（默认）
+3. $PATH 中其他 phone-harness
 ```
 
-不把 `screenshot()`、`connection_state()`、`screen_info()`、`caffeinate` 或 `activate()` 当作 iOS 保活保证。
+因此正常使用本仓库时不需要再单独 clone phone-harness。
 
-无人值守默认使用 `auto_connect`；密码、设备解锁、验证码、安全挑战和未知页面仍然冻结业务输入。
+---
 
-对应新增：
+## 4. 第一次连接 iPhone
+
+1. 在 Mac 上手动打开一次 **iPhone Mirroring** 并完成 Apple 的首次配对；
+2. 给运行甄姬的 Terminal / Agent 进程授权：
+   - System Settings → Privacy & Security → Accessibility
+   - System Settings → Privacy & Security → Screen Recording
+3. 如果刚开启 Screen Recording 权限，重启 Terminal / Agent；
+4. 执行：
+
+```bash
+./vendor/phone-harness/phone-harness --doctor ios
+```
+
+通过后，甄姬才能可靠执行截图、OCR 与真实 HID 输入。
+
+完整 phone-harness 原始说明仍保留在 `vendor/phone-harness/README.md`、`install.md` 和 `onboarding.md`。
+
+---
+
+# 作为 Agent Skill 使用
+
+仓库根目录的 `SKILL.md` 是甄姬的 Agent Skill 入口。
+
+以 Codex 为例，可以把整个仓库放入 skill 目录，或建立软链接：
+
+```bash
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+ln -s "$(pwd)" "${CODEX_HOME:-$HOME/.codex}/skills/zhenji"
+```
+
+如果目标位置已经存在，请先自行处理旧目录/软链接。
+
+也可以直接告诉 Codex / Claude Code：
 
 ```text
-references/unattended-runtime-v4.md
-references/migration-v3-v4.md
-scripts/idle_calibration.py
-scripts/keepalive.py
-scripts/unattended_runtime.py
-schemas/google-sheets-schema-v4.json
+Read README.md and SKILL.md in this zhenji repository. Install the vendored
+phone-harness from vendor/phone-harness, run its iOS doctor, then use zhenji's
+Action Recipes and media pipeline for the requested social-media research task.
+Do not rediscover known fixed UI actions unless the recipe fails validation.
 ```
 
+---
 
-## 平台支持（V5.1+ 多平台）
+# 批量运行前建议检查
 
-> 平台状态以 `references/platform-status.yaml` 为准（区分 "router 识别" 与 "业务支持"）。
-
-| 平台 | 状态 | Adapter + Recipe |
-|---|---|---|
-| XHS 小红书 | production | `scripts/xhs_adapter.py` + `references/platform-recipes/xhs.yaml` |
-| Douyin 抖音 | beta | `scripts/douyin_adapter.py` + `references/platform-recipes/douyin.yaml` |
-| Instagram | router_only | router 识别，adapter / recipe 未实现 |
-| TikTok | router_only | router 识别，adapter / recipe 未实现 |
-
-平台架构（V5.2）：**平台差异只存在于 Action Recipe 与 Media Adapter 两层**
+如果准备长时间、批量运行，建议先完成以下检查：
 
 ```text
-                    zhenji
-
-                 Runtime Layer
-
-        ┌──────────────┬──────────────┐
- Action Recipe                 Media Adapter
-  scripts/action_recipe/        scripts/media_adapters.py
-  references/platform-recipes/   xhs_adapter / douyin_adapter
-  真机怎么操作                   内容怎么获取
-        └──────────────┬──────────────┘
-              Intelligence Layer
-          内容分析 / 爆款拆解 / 竞品分析 / 运营建议
-
-真机拿链接（Action Recipe 驱动）：
-phone-harness (screen_info → ratio 坐标 → tap / semantic_tap)
-    ↓ 状态校验（share_panel_visible / clipboard_changed / url_match）
-Share Link Harvester → platform_router → Adapter Registry
-    ↓
-MediaFetchResult (metadata_only / media_ready)
-    ↓ Media Queue → Worker → Pipeline
-    ↓
-浮光 / 掠影 / 听澜 / 观澜 → Batch Storage (Sheets / Drive / 本地)
+[ ] iPhone Mirroring 已连接并稳定
+[ ] phone-harness --doctor ios 通过
+[ ] Mac 不会自动睡眠
+[ ] yt-dlp / ffmpeg 可用
+[ ] 需要听澜/观澜时，Whisper 已安装且模型可用
+[ ] 当前平台 Recipe 已真机校准
+[ ] runtime/ 有足够磁盘空间
+[ ] Media Queue 可写
 ```
 
-核心原则：平台差异只留在 Action Recipe 与 Adapter 层；Queue / Worker / FFmpeg / Whisper / Analysis / Storage 全部共用。
+V4/V5 运行时还提供：
 
-## V5 · 真机拿链接，本地看视频
+- Watchdog（看门狗）
+- Checkpoint（断点）
+- Idle Calibration（空闲暂停标定）
+- Safe Keepalive（安全保活）
+- Observation Cache（观察缓存）
+- Card Map（卡片地图）
+- Batch Write（批量写入）
 
-V5 把视频主路径改成：
+这些能力用于长批处理时恢复连接、减少重复 OCR/探索和避免游标错误推进。
+
+---
+
+# Action Recipe：不要每次重新找按钮
+
+V5.2 的关键变化是 **Action Recipe（动作配方）**。
+
+对固定 App 页面，甄姬不应该每次：
 
 ```text
-iPhone + phone-harness
-发现作品 → 分享 → 复制链接
-                ↓
-            本地队列
-                ↓
-        下载 / 转录 / 抽帧
-                ↓
-        掠影 / 听澜 / 观澜
-                ↓
-            批量入库
+截图 → OCR → 猜按钮 → 点击 → 再猜
 ```
 
-核心变化：
-
-- iPhone 不再默认实时播放完整视频给模型看；
-- `phone-harness` 主要负责取得当前作品的真实分享链接；
-- 复制前后校验 Mac 剪贴板变化，避免把上一条链接绑定到当前作品；
-- 分享链接立即解析并进入 SQLite 媒体队列；
-- 下载、Whisper 转录、FFmpeg 抽帧和场景切分在 Mac 后台并行；
-- 支持“边采链接、边下载、边识别、边分析”，不等整个账号全部下载完成；
-- 小红书下载支持 `smile7up/xiaohongshu-downloader` 适配器或直接 `yt-dlp`；
-- 原来的镜像播放分析降级为下载失败时的可选 fallback（回退）。
-
-三档视频模式的数据源也改为本地媒体：
+而应该：
 
 ```text
-掠影 · 效率：480p + 6–12 关键帧
-听澜 · 基本：本地音频 + 完整转录 + 少量关键帧
-观澜 · 完整：完整视频 + 转录 + 场景切分 + 时间轴
+Platform Recipe
+→ 直接执行已知动作
+→ 每一步验证
+→ Recipe 失败时才进入视觉探索
 ```
 
-新增核心文件：
+Recipe 位于：
 
 ```text
-scripts/platform_router.py
-scripts/clipboard_link.py
-scripts/share_link_flow.py
-scripts/media_queue.py
-scripts/xhs_media.py
-scripts/ffmpeg_tools.py
-scripts/transcription.py
-scripts/media_pipeline.py
-
-references/media-pipeline-v5.md
-references/share-link-harvest-v5.md
-references/migration-v4-v5.md
-schemas/google-sheets-schema-v5.json
+references/platform-recipes/
+├── xhs.yaml
+├── douyin.yaml
+├── instagram.yaml
+└── tiktok.yaml
 ```
 
-## 系统能力
+坐标使用 0–1 的 normalized ratio（归一化比例），运行时根据最新 `screen_info()` 动态换算，避免把某一台 Mac 的绝对屏幕坐标写死。
+
+---
+
+# 媒体 Adapter
+
+平台差异只保留在两层：
 
 ```text
-真实 iPhone 采集
-→ Google Sheets（谷歌表格）结构化数据库
-→ Google Drive（谷歌云端硬盘）证据
-→ 内容与评论结构化
-→ 结构化 / 关键词 / 可选语义检索
-→ 账号、作品、评论、竞品分析
-→ Pattern（模式）
-→ Topic（选题）
-→ Experiment（实验）
-→ Review（复盘）
+Action Recipe：App 里怎么操作
+Media Adapter：分享 URL 怎么解析/获取媒体
 ```
 
-核心数据分为四层：
+之后的模块全部复用：
 
 ```text
-L0 Evidence  原始证据
-L1 Facts     可观察事实
-L2 Features  内容与评论结构特征
-L3 Knowledge 可复用运营知识
+Queue
+Worker
+FFmpeg
+Whisper
+Analysis
+Storage
 ```
 
-## 目录
+统一 Adapter 接口见：
+
+```text
+scripts/media_adapter_protocol.py
+scripts/media_adapters.py
+```
+
+当前注册：
+
+```text
+xhs_adapter.py
+douyin_adapter.py
+```
+
+---
+
+# 数据模型
+
+甄姬把数据分四层：
+
+```text
+L0 Evidence   原始证据
+L1 Facts      可直接观察的事实
+L2 Features   内容/评论/视频结构特征
+L3 Knowledge  可复用的运营知识
+```
+
+典型 Fact：
+
+```text
+accounts
+account_snapshots
+posts
+post_snapshots
+comments
+runs
+share_links
+media_jobs
+media_assets
+```
+
+分析层包括：
+
+```text
+content_features
+comment_features
+video_features
+knowledge
+experiments
+search_index
+alerts
+```
+
+Google Sheets schema 演进记录位于 `schemas/`。
+
+---
+
+# 目录速览
 
 ```text
 zhenji/
@@ -257,124 +402,86 @@ zhenji/
 ├── README.md
 ├── CHANGELOG.md
 ├── VERSION
+├── LICENSE
 ├── SOURCES.md
-├── examples/
-│   ├── config.example.yaml
-│   └── query-examples.md
-├── references/
-│   ├── data-model.md
-│   ├── knowledge-loop.md
-│   ├── ops-analysis.md
-│   ├── retrieval.md
-│   ├── luoshen-naming.md
-│   ├── runtime-performance.md
-│   ├── video-modes.md
-│   ├── helper-macros.md
-│   ├── media-pipeline-v5.md
-│   ├── share-link-harvest-v5.md
-│   ├── unattended-watchdog.md
-│   ├── unattended-runtime-v4.md
-│   ├── migration-v2-v3.md
-│   ├── migration-v3-v4.md
-│   ├── migration-v4-v5.md
-│   └── zhenji_setup.md       ← V5.1+ (PSSD venv, HF mirror, etc.)
+│
+├── vendor/
+│   └── phone-harness/          # 完整固定上游源码快照
+│       ├── README.md
+│       ├── SKILL.md
+│       ├── install.md
+│       ├── onboarding.md
+│       ├── phone-harness
+│       ├── pyproject.toml
+│       ├── agent-workspace/
+│       ├── src/phone_harness/
+│       └── LICENSE
+│
 ├── scripts/
-│   ├── action_macros.py
-│   ├── checkpoint.py
-│   ├── clipboard_link.py
-│   ├── douyin_adapter.py     ← V5.1+ Douyin MediaAdapter
-│   ├── douyin_media.py       ← V5.1+ low-level 抖音 utilities
-│   ├── ffmpeg_tools.py
-│   ├── idle_calibration.py
-│   ├── keepalive.py
-│   ├── media_adapter_protocol.py  ← V5.1+ MediaFetchResult + Protocol
-│   ├── media_adapters.py     ← V5.1+ ADAPTERS registry
-│   ├── media_pipeline.py     ← V5.1+ generic, no platform hardcode
+│   ├── phone_harness/          # zhenji 对 vendored runtime 的适配层
+│   ├── action_recipe/          # 真机动作配方引擎
+│   ├── platform_router.py
+│   ├── platform_status.py
+│   ├── xhs_adapter.py
+│   ├── douyin_adapter.py
+│   ├── media_adapter_protocol.py
+│   ├── media_adapters.py
 │   ├── media_queue.py
-│   ├── media_worker.py       ← V5.1+ generic, registry-based (acceptable_for_mode 校验)
-│   ├── platform_status.py    ← V5.2 平台状态声明加载器
-│   ├── phone_harness/        ← V5.1+ built-in phone-harness adapter
-│   │   ├── __init__.py
-│   │   ├── geometry.py       ← dynamic 窗口坐标 + ratio_to_screen
-│   │   └── sentinel.py       ← 剪贴板哨兵
-│   ├── action_recipe/        ← V5.2 真机操作知识库
-│   │   ├── __init__.py
-│   │   ├── schema.py         ← Action / Target / Validation / Recipe
-│   │   ├── validator.py      ← 强制 ratio 坐标、禁绝对值、校验结构
-│   │   └── engine.py         ← RecipeEngine (注入 harness/validator)
-│   ├── phone_helpers.py
-│   ├── platform_router.py    ← V5.1+ strict 域名匹配
-│   ├── runtime_cache.py
-│   ├── share_link_flow.py
+│   ├── media_worker.py
+│   ├── media_pipeline.py
+│   ├── ffmpeg_tools.py
 │   ├── transcription.py
-│   ├── unattended_runtime.py
-│   ├── video_modes.py        ← V5.1+ 四档体系
 │   ├── watchdog.py
-│   ├── write_buffer.py
-│   ├── xhs_adapter.py        ← V5.1+ XhsAdapter (wraps xhs_media)
-│   └── xhs_media.py
+│   └── unattended_runtime.py
+│
 ├── references/
-│   ├── ...
-│   ├── platform-status.yaml          ← V5.2 平台状态声明
-│   └── platform-recipes/             ← V5.2 真机操作 recipe
-│       ├── xhs.yaml
-│       ├── douyin.yaml
-│       ├── instagram.yaml
-│       └── tiktok.yaml
+│   ├── platform-status.yaml
+│   ├── platform-recipes/
+│   ├── media-pipeline-v5.md
+│   ├── unattended-runtime-v4.md
+│   └── ...
+│
 ├── schemas/
-│   ├── google-sheets-schema-v2.json
-│   ├── google-sheets-schema-v3.json
-│   ├── google-sheets-schema-v4.json
-│   └── google-sheets-schema-v5.json
-├── tests/
-│   ├── test_v4_runtime.py
-│   ├── test_v5_media_pipeline.py
-│   ├── test_platform_router.py        ← V5.1+
-│   ├── test_douyin_media.py           ← V5.1+
-│   ├── test_media_adapter_registry.py ← V5.1+
-│   ├── test_phone_harness_geometry.py ← V5.1+
-│   ├── test_media_fetch_result.py    ← V5.2 P0 语义
-│   ├── test_action_recipe.py         ← V5.2 Action Recipe
-│   ├── test_platform_status.py       ← V5.2 平台状态
-│   └── test_douyin_resolver.py       ← V5.2 resolver 测试
-└── .github/workflows/test.yml          ← V5.1+ minimal CI
+├── examples/
+└── tests/
 ```
 
-## 安装
+---
 
-```bash
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/zhenji"
-cp SKILL.md "${CODEX_HOME:-$HOME/.codex}/skills/zhenji/SKILL.md"
-cp -R references schemas examples scripts "${CODEX_HOME:-$HOME/.codex}/skills/zhenji/"
+# 许可证与上游
+
+甄姬仓库自身使用 MIT License。
+
+`vendor/phone-harness/` 来源于 `ShawnPana/phone-harness`，上游同样使用 MIT License；原始版权与许可文本完整保留在：
+
+```text
+vendor/phone-harness/LICENSE
 ```
 
+小红书媒体获取流程还参考/兼容 `smile7up/xiaohongshu-downloader`，其许可说明保存在 `licenses/` 与 `SOURCES.md`。
 
-## 无人值守默认策略
+---
 
-长批处理先执行 Preflight（预检）并启动 Watchdog。无业务动作且接近实测 idle timeout（空闲超时）时，才执行当前页面已注册、已验证的 Safe Keepalive（安全保活）真实 HID 输入。
+# 当前边界
 
-镜像进入明确恢复页时，默认 `auto_connect` 自动恢复；恢复成功后所有位置相关缓存全部失效并重新观察，再从 checkpoint（断点）继续。
+- 真机 UI 会随 App 版本变化，Recipe 必须通过状态验证，不能把坐标当永久事实；
+- 登录、验证码、设备解锁、平台安全挑战可能要求用户介入；
+- Douyin 当前仍是 beta，部分媒体获取能力依赖登录态/平台接口可用性；
+- Instagram / TikTok 目前不是 production Adapter；
+- 本项目不保证平台内部非公开接口长期稳定；
+- 批量运行前应先用少量样本验证当前 App 版本、Recipe 和媒体下载链路。
 
+---
 
-### V5 运行依赖
+## 洛神四象
 
-```bash
-brew install yt-dlp ffmpeg
-```
+甄姬内部用《洛神赋》意象命名四类核心能力：
 
-需要本地 Whisper（可选）：
+| 名称 | 职责 |
+|---|---|
+| **流眄** | 真机监测 |
+| **采珠** | 内容入库 |
+| **流精** | 模式分析 |
+| **殊观** | 运营发现 |
 
-```bash
-python -m pip install faster-whisper
-```
-
-如使用 `smile7up/xiaohongshu-downloader`：
-
-```yaml
-media:
-  downloader:
-    backend: auto
-    smile7up_script: "/path/to/xiaohongshu-downloader/scripts/download_xiaohongshu.py"
-```
-
-未配置该脚本时，`auto` 自动回退到直接调用 `yt-dlp`。
+> **流眄监其变，采珠存其真，流精辨其势，殊观得其机。**
