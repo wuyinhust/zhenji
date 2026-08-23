@@ -1,12 +1,12 @@
 ---
 name: zhenji
-version: 5.2
+version: 5.2.1
 description: 真机驱动的社交媒体内容情报 Skill。当前首先适配小红书，并为 Instagram（照片与短视频社交平台）、TikTok（短视频平台）等保留平台适配层；通过真实 iPhone 采集账号、作品、视频、公开评论、搜索与推荐流信号，结构化保存到 Google Sheets（谷歌表格）和 Google Drive（谷歌云端硬盘），支持高效视频理解、检索、账号诊断、竞品分析、模式挖掘、选题、实验与复盘。默认只读，不自动点赞、关注、评论、私信或发布，不绕过平台安全验证。
 ---
 
 # 甄姬（zhenji）
 
-> **v5.2 · 2026-08-22**
+> **v5.2.1 · 2026-08-23**
 >
 > 主要变更（详见 `CHANGELOG.md`）：
 > - **P0 MediaFetchResult 语义修正**：删除误导性的 `ok` 属性，新增 `succeeded`（status 不在 {FAILED,BLOCKED}）；业务层必须用 `acceptable_for_mode(mode)` 判断任务是否达成。
@@ -16,7 +16,7 @@ description: 真机驱动的社交媒体内容情报 Skill。当前首先适配�
 > - **P1 测试 + CI**：新增 `test_media_fetch_result` / `test_action_recipe` / `test_platform_status` / `test_douyin_resolver`。
 >
 > v5.1 主要变更：
-> - `phone-harness` 已 bundled（不再要求用户单独 download；调用通过 `scripts/phone_harness/` 子包）
+> - `phone-harness` 完整源码已固定到 `vendor/phone-harness/`；`scripts/phone_harness/` 是甄姬运行时适配层，默认优先使用 vendored launcher。
 > - 去掉 phone-harness 强约束（v5 中"必须"、"严禁"的限制改为建议）
 > - 新增「浮光 (fuguang)」第四档（post_followup + V4 mirror fallback 纯视觉摘要）
 > - 工程加速固化：PSSD venv / `HF_ENDPOINT=hf-mirror.com` / 卸 hf-xet / `shutil.rmtree`

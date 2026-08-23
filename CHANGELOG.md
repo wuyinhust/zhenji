@@ -1,5 +1,14 @@
 # Changelog
 
+## V5.2.1
+
+Public/batch-ready packaging refresh.
+
+- README 重写为面向首次接触甄姬的公开项目说明：用途、平台状态、安装、首次 iPhone 配置、批量运行检查、四档视频模式、Action Recipe、Media Adapter、数据模型与边界。
+- 完整 vendoring `ShawnPana/phone-harness@47f37a6dd5baae9f10f16e21e50a6898ee42cd22` 到 `vendor/phone-harness/`，保留上游 README / SKILL / install / onboarding / launcher / pyproject / agent-workspace / `src/phone_harness/` / MIT LICENSE。
+- `scripts/phone_harness/` 改为优先使用仓库内 `vendor/phone-harness/phone-harness`；`PHONE_HARNESS_BIN` 仍可显式覆盖，`$PATH` 仅作为最后 fallback。
+- `VERSION` / `SKILL.md` / README 同步到 5.2.1。
+
 ## V5.2
 
 真机操作知识库：v5.1.2 解决了"不同平台的视频如何统一处理"，v5.2 解决"不同平台的真机操作如何统一执行"。
