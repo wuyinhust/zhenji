@@ -1,0 +1,53 @@
+name: Vendor phone-harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/vendor-phone-harness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Vendor pinned phone-harness snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="47f37a6dd5baae9f10f16e21e50a6898ee42cd22"
+          rm -rf /tmp/phone-harness-upstream
+          git clone https://github.com/ShawnPana/phone-harness.git /tmp/phone-harness-upstream
+          git -C /tmp/phone-harness-upstream checkout "$UPSTREAM_SHA"
+          rm -rf vendor/phone-harness
+          mkdir -p vendor/phone-harness
+          rsync -a --exclude='.git' /tmp/phone-harness-upstream/ vendor/phone-harness/
+          cat > vendor/phone-harness/ZHENJI_VENDOR.json <<EOF
+          {
+            "upstream": "https://github.com/ShawnPana/phone-harness",
+            "commit": "$UPSTREAM_SHA",
+            "license": "MIT",
+            "vendored_for": "zhenji"
+          }
+          EOF
+
+      - name: Commit vendor snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vendor/phone-harness
+          if git diff --cached --quiet; then
+            echo "Vendor snapshot already current"
+            exit 0
+          fi
+          git commit -m "vendor: include complete phone-harness 47f37a6 [skip ci]"
+          git push origin HEAD:main
