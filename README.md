@@ -12,6 +12,12 @@
 
 当前版本：**5.2.2**。
 
+## 视觉形象
+
+<p align="center">
+  <img src="assets/character/zhenji-luoshen-character-sheet.png" alt="甄姬·洛神古装三视图" width="900" />
+</p>
+
 ---
 
 ## 适合做什么
@@ -110,6 +116,17 @@ Mac 负责：下载 → 转录 → 抽帧 → 分析 → 入库
   ↓ 需要镜头级研究
 观澜
 ```
+
+## 四档视频理解（图示）
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/icons/modes/fuguang.png" width="220" alt="浮光" /><br/><strong>浮光</strong></td>
+    <td align="center"><img src="assets/icons/modes/lueying.png" width="220" alt="掠影" /><br/><strong>掠影</strong></td>
+    <td align="center"><img src="assets/icons/modes/tinglan.png" width="220" alt="听澜" /><br/><strong>听澜</strong></td>
+    <td align="center"><img src="assets/icons/modes/guanlan.png" width="220" alt="观澜" /><br/><strong>观澜</strong></td>
+  </tr>
+</table>
 
 ---
 
@@ -443,6 +460,7 @@ zhenji/
 │
 ├── schemas/
 ├── examples/
+├── assets/                 # 视觉素材：角色三视图 + 技能/模式/路线图图标
 └── tests/
 ```
 
@@ -486,6 +504,28 @@ vendor/phone-harness/LICENSE
 
 > **流眄监其变，采珠存其真，流精辨其势，殊观得其机。**
 
+## 核心技能
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/icons/skills/liumian.png" width="220" alt="流眄" /><br/><strong>流眄</strong><br/>真机监测</td>
+    <td align="center"><img src="assets/icons/skills/caizhu.png" width="220" alt="采珠" /><br/><strong>采珠</strong><br/>内容入库</td>
+    <td align="center"><img src="assets/icons/skills/liujing.png" width="220" alt="流精" /><br/><strong>流精</strong><br/>模式分析</td>
+    <td align="center"><img src="assets/icons/skills/shuguan.png" width="220" alt="殊观" /><br/><strong>殊观</strong><br/>运营发现</td>
+  </tr>
+</table>
+
 ## 风控与账号隔离
 
 批量运行时，甄姬默认采用“真机高价值账号 + Mac 低频网络获取 + 本地高并发分析”的隔离策略。高价值账号留在 iPhone；Mac 优先无账号，必须认证时使用固定研究号；不使用日抛号池、自动换号或自动换 IP 作为风控恢复。429/5xx 采用有界退避，验证码、IP block、安全挑战直接暂停平台网络队列。详见 `references/risk-control-and-account-isolation.md`。
+
+## 路线图能力
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/icons/roadmap/xunti.png" width="220" alt="寻题" /><br/><strong>寻题</strong><br/>v5.3 · L0 Topic Intelligence</td>
+    <td align="center"><img src="assets/icons/roadmap/yinghe.png" width="220" alt="应和" /><br/><strong>应和</strong><br/>v5.4 · L1 Interaction Plane</td>
+    <td align="center"><img src="assets/icons/roadmap/chengyan.png" width="220" alt="成言" /><br/><strong>成言</strong><br/>v5.5 · L2 Expression Plane</td>
+    <td align="center"><img src="assets/icons/roadmap/bupian.png" width="220" alt="布篇" /><br/><strong>布篇</strong><br/>v6.0 · L3 Publishing Plane</td>
+  </tr>
+</table>
