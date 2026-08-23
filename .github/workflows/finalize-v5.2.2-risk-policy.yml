@@ -1,0 +1,56 @@
+name: finalize v5.2.2 risk policy
+
+on:
+  push:
+    paths:
+      - references/risk-control-and-account-isolation.md
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch SKILL, README, CHANGELOG and VERSION
+        shell: python
+        run: |
+          from pathlib import Path
+
+          skill = Path('SKILL.md')
+          text = skill.read_text()
+          text = text.replace('version: 5.2.1', 'version: 5.2.2', 1)
+          text = text.replace('> **v5.2.1 · 2026-08-23**', '> **v5.2.2 · 2026-08-23**', 1)
+          marker = '## 2.1 性能优先运行架构'
+          block = '''## 2.0.1 风控与账号隔离（V5.2.2）\n\n甄姬将高价值账号与机器网络请求隔离。完整策略见：\n\n```text\nreferences/risk-control-and-account-isolation.md\n```\n\n必须遵守：\n\n```text\n高价值长期账号 → 留在真实 iPhone App，负责正常浏览、发现、分享、复制链接。\nMac 网络获取 → 无账号优先；必须登录时使用独立、固定、长期研究号。\n不得把日抛号池、自动轮换账号、自动换 IP / VPN 作为风控恢复机制。\n平台网络请求 → 窄管道，默认 network worker = 1；必要时才谨慎提高。\n本地处理 → 宽管道；FFmpeg / Whisper / OCR / AI 可按机器性能并行。\n已有媒体 / metadata / resolved URL / token context → 优先缓存复用，不重复请求。\n429 / 5xx / timeout → 有界指数退避，禁止 tight loop。\n验证码 / CAPTCHA / 安全挑战 / IP block → 立即暂停该平台网络队列并保存 checkpoint。\nSession expired → AUTH_REQUIRED；恢复固定研究号，不自动切换新账号。\n风控发生后 → 已下载素材的本地转录、抽帧、分析、入库继续运行。\n```\n\nMac 对社交平台的请求必须由统一 RiskController 管理；Adapter 不得自行无限重试。\n\n推荐状态：\n\n```text\nCLOSED        正常低速请求\nBACKOFF       临时降速\nOPEN          平台请求暂停\nAUTH_REQUIRED 需要人工恢复登录\n```\n\n账号隔离优先级：\n\n```text\n1. 无账号可完成 → 不登录\n2. 必须登录 → 固定研究号\n3. 高价值老号 → 默认只在真实 iPhone 使用\n```\n\n'''
+          if '## 2.0.1 风控与账号隔离（V5.2.2）' not in text:
+              text = text.replace(marker, block + marker, 1)
+          skill.write_text(text)
+
+          Path('VERSION').write_text('5.2.2\n')
+
+          readme = Path('README.md')
+          r = readme.read_text()
+          r = r.replace('5.2.1', '5.2.2')
+          risk_note = '''\n## 风控与账号隔离\n\n批量运行时，甄姬默认采用“真机高价值账号 + Mac 低频网络获取 + 本地高并发分析”的隔离策略。高价值账号留在 iPhone；Mac 优先无账号，必须认证时使用固定研究号；不使用日抛号池、自动换号或自动换 IP 作为风控恢复。429/5xx 采用有界退避，验证码、IP block、安全挑战直接暂停平台网络队列。详见 `references/risk-control-and-account-isolation.md`。\n'''
+          if '## 风控与账号隔离' not in r:
+              r += risk_note
+          readme.write_text(r)
+
+          changelog = Path('CHANGELOG.md')
+          c = changelog.read_text()
+          entry = '''## V5.2.2\n\n- 新增 `references/risk-control-and-account-isolation.md`：统一网络风控与账号隔离策略。\n- 高价值长期账号默认仅用于真实 iPhone App 的正常发现/分享；Mac 优先无账号，必要时使用独立固定研究号。\n- 明确不把日抛号池、自动轮换账号、自动换 IP/VPN 当作风控恢复机制。\n- 定义 RiskController：429/5xx/timeout 有界指数退避；验证码、IP block、安全挑战打开 circuit；session expired 进入 AUTH_REQUIRED。\n- 明确“网络窄管道、本地宽管道”：平台请求低并发，本地 FFmpeg/Whisper/OCR/AI 可并行。\n\n'''
+          if '## V5.2.2' not in c:
+              c = c.replace('# Changelog\n\n', '# Changelog\n\n' + entry, 1)
+          changelog.write_text(c)
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add SKILL.md README.md CHANGELOG.md VERSION
+          git diff --cached --quiet && exit 0
+          git commit -m "v5.2.2: risk control and account isolation [skip ci]"
+          git push
