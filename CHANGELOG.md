@@ -1,5 +1,13 @@
 # Changelog
 
+## V5.2.2
+
+- 新增 `references/risk-control-and-account-isolation.md`：统一网络风控与账号隔离策略。
+- 高价值长期账号默认仅用于真实 iPhone App 的正常发现/分享；Mac 优先无账号，必要时使用独立固定研究号。
+- 明确不把日抛号池、自动轮换账号、自动换 IP/VPN 当作风控恢复机制。
+- 定义 RiskController：429/5xx/timeout 有界指数退避；验证码、IP block、安全挑战打开 circuit；session expired 进入 AUTH_REQUIRED。
+- 明确“网络窄管道、本地宽管道”：平台请求低并发，本地 FFmpeg/Whisper/OCR/AI 可并行。
+
 ## V5.2.1
 
 Public/batch-ready packaging refresh.

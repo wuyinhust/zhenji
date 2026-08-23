@@ -1,12 +1,12 @@
 ---
 name: zhenji
-version: 5.2.1
+version: 5.2.2
 description: 真机驱动的社交媒体内容情报 Skill。当前首先适配小红书，并为 Instagram（照片与短视频社交平台）、TikTok（短视频平台）等保留平台适配层；通过真实 iPhone 采集账号、作品、视频、公开评论、搜索与推荐流信号，结构化保存到 Google Sheets（谷歌表格）和 Google Drive（谷歌云端硬盘），支持高效视频理解、检索、账号诊断、竞品分析、模式挖掘、选题、实验与复盘。默认只读，不自动点赞、关注、评论、私信或发布，不绕过平台安全验证。
 ---
 
 # 甄姬（zhenji）
 
-> **v5.2.1 · 2026-08-23**
+> **v5.2.2 · 2026-08-23**
 >
 > 主要变更（详见 `CHANGELOG.md`）：
 > - **P0 MediaFetchResult 语义修正**：删除误导性的 `ok` 属性，新增 `succeeded`（status 不在 {FAILED,BLOCKED}）；业务层必须用 `acceptable_for_mode(mode)` 判断任务是否达成。
@@ -180,6 +180,48 @@ get_media_descriptor()
 
 小红书适配器可继续提供 `search_notes()` 作为兼容别名。上层 Facts / Features / Knowledge 不依赖平台页面实现。
 
+
+## 2.0.1 风控与账号隔离（V5.2.2）
+
+甄姬将高价值账号与机器网络请求隔离。完整策略见：
+
+```text
+references/risk-control-and-account-isolation.md
+```
+
+必须遵守：
+
+```text
+高价值长期账号 → 留在真实 iPhone App，负责正常浏览、发现、分享、复制链接。
+Mac 网络获取 → 无账号优先；必须登录时使用独立、固定、长期研究号。
+不得把日抛号池、自动轮换账号、自动换 IP / VPN 作为风控恢复机制。
+平台网络请求 → 窄管道，默认 network worker = 1；必要时才谨慎提高。
+本地处理 → 宽管道；FFmpeg / Whisper / OCR / AI 可按机器性能并行。
+已有媒体 / metadata / resolved URL / token context → 优先缓存复用，不重复请求。
+429 / 5xx / timeout → 有界指数退避，禁止 tight loop。
+验证码 / CAPTCHA / 安全挑战 / IP block → 立即暂停该平台网络队列并保存 checkpoint。
+Session expired → AUTH_REQUIRED；恢复固定研究号，不自动切换新账号。
+风控发生后 → 已下载素材的本地转录、抽帧、分析、入库继续运行。
+```
+
+Mac 对社交平台的请求必须由统一 RiskController 管理；Adapter 不得自行无限重试。
+
+推荐状态：
+
+```text
+CLOSED        正常低速请求
+BACKOFF       临时降速
+OPEN          平台请求暂停
+AUTH_REQUIRED 需要人工恢复登录
+```
+
+账号隔离优先级：
+
+```text
+1. 无账号可完成 → 不登录
+2. 必须登录 → 固定研究号
+3. 高价值老号 → 默认只在真实 iPhone 使用
+```
 
 ## 2.1 性能优先运行架构
 
