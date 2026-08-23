@@ -1,0 +1,6 @@
+{
+  "upstream": "https://github.com/ShawnPana/phone-harness",
+  "commit": "47f37a6dd5baae9f10f16e21e50a6898ee42cd22",
+  "license": "MIT",
+  "vendored_for": "zhenji"
+}
