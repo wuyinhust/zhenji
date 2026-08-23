@@ -1,0 +1,61 @@
+name: Finalize zhenji 5.2.1 metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/finalize-5.2.1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Synchronize release metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          skill = Path('SKILL.md')
+          text = skill.read_text(encoding='utf-8')
+          text = text.replace('version: 5.2\n', 'version: 5.2.1\n', 1)
+          text = text.replace('> **v5.2 · 2026-08-22**', '> **v5.2.1 · 2026-08-23**', 1)
+          text = text.replace(
+              '> - `phone-harness` 已 bundled（不再要求用户单独 download；调用通过 `scripts/phone_harness/` 子包）',
+              '> - `phone-harness` 完整源码已固定到 `vendor/phone-harness/`；`scripts/phone_harness/` 是甄姬运行时适配层，默认优先使用 vendored launcher。',
+              1,
+          )
+          skill.write_text(text, encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          c = changelog.read_text(encoding='utf-8')
+          marker = '# Changelog\n\n'
+          section = '''## V5.2.1\n\nPublic/batch-ready packaging refresh.\n\n- README 重写为面向首次接触甄姬的公开项目说明：用途、平台状态、安装、首次 iPhone 配置、批量运行检查、四档视频模式、Action Recipe、Media Adapter、数据模型与边界。\n- 完整 vendoring `ShawnPana/phone-harness@47f37a6dd5baae9f10f16e21e50a6898ee42cd22` 到 `vendor/phone-harness/`，保留上游 README / SKILL / install / onboarding / launcher / pyproject / agent-workspace / `src/phone_harness/` / MIT LICENSE。\n- `scripts/phone_harness/` 改为优先使用仓库内 `vendor/phone-harness/phone-harness`；`PHONE_HARNESS_BIN` 仍可显式覆盖，`$PATH` 仅作为最后 fallback。\n- `VERSION` / `SKILL.md` / README 同步到 5.2.1。\n\n'''
+          if '## V5.2.1\n' not in c:
+              c = c.replace(marker, marker + section, 1)
+          changelog.write_text(c, encoding='utf-8')
+          PY
+
+      - name: Run unit tests
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pyyaml
+          for f in tests/test_*.py; do python3 "$f"; done
+
+      - name: Commit synchronized metadata
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add SKILL.md CHANGELOG.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "release: finalize public 5.2.1 metadata [skip ci]"
+          git push origin HEAD:main
