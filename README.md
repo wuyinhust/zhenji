@@ -96,14 +96,14 @@ Mac 负责：下载 → 转录 → 抽帧 → 分析 → 入库
 
 ## 四档视频理解
 
-甄姬不会对所有视频都做最重的分析，而是按成本分四档：
+甄姬不会对所有视频都做最重的分析，而是按成本分四档，每档图标即其视觉身份：
 
-| 模式 | 用途 | 本地媒体要求 |
-|---|---|---|
-| **浮光 fuguang** | 真机快速判断“值不值得继续看” | 可仅 metadata / 真机视觉 |
-| **掠影 lueying** | 大样本批量初筛 | 低成本本地视频 + 6–12 个代表帧 |
-| **听澜 tinglan** | 大多数口播、知识、测评、剧情解说 | 本地视频 + 完整音频转录 + 少量关键帧 |
-| **观澜 guanlan** | 高价值样本、镜头结构、复刻研究 | 完整视频 + 转录 + Scene Detection + 时间轴 |
+| 图标 | 模式 | 用途 | 本地媒体要求 |
+|---|---|---|---|
+| <img src="assets/icons/modes/fuguang.png" width="100" alt="浮光" /> | **浮光 fuguang** | 真机快速判断“值不值得继续看” | 可仅 metadata / 真机视觉 |
+| <img src="assets/icons/modes/lueying.png" width="100" alt="掠影" /> | **掠影 lueying** | 大样本批量初筛 | 低成本本地视频 + 6–12 个代表帧 |
+| <img src="assets/icons/modes/tinglan.png" width="100" alt="听澜" /> | **听澜 tinglan** | 大多数口播、知识、测评、剧情解说 | 本地视频 + 完整音频转录 + 少量关键帧 |
+| <img src="assets/icons/modes/guanlan.png" width="100" alt="观澜" /> | **观澜 guanlan** | 高价值样本、镜头结构、复刻研究 | 完整视频 + 转录 + Scene Detection + 时间轴 |
 
 默认升级路径：
 
@@ -116,19 +116,6 @@ Mac 负责：下载 → 转录 → 抽帧 → 分析 → 入库
   ↓ 需要镜头级研究
 观澜
 ```
-
-## 四档视频理解（图示）
-
-<table>
-  <tr>
-    <td align="center"><img src="assets/icons/modes/fuguang.png" width="220" alt="浮光" /><br/><strong>浮光</strong></td>
-    <td align="center"><img src="assets/icons/modes/lueying.png" width="220" alt="掠影" /><br/><strong>掠影</strong></td>
-    <td align="center"><img src="assets/icons/modes/tinglan.png" width="220" alt="听澜" /><br/><strong>听澜</strong></td>
-    <td align="center"><img src="assets/icons/modes/guanlan.png" width="220" alt="观澜" /><br/><strong>观澜</strong></td>
-  </tr>
-</table>
-
----
 
 # 安装
 
@@ -493,27 +480,16 @@ vendor/phone-harness/LICENSE
 
 ## 洛神四象
 
-甄姬内部用《洛神赋》意象命名四类核心能力：
+甄姬内部用《洛神赋》意象命名四类核心能力，图标即其视觉身份：
 
-| 名称 | 职责 |
-|---|---|
-| **流眄** | 真机监测 |
-| **采珠** | 内容入库 |
-| **流精** | 模式分析 |
-| **殊观** | 运营发现 |
+| 图标 | 能力 | 《洛神赋》意象 | 系统职责 |
+|---|---|---|---|
+| <img src="assets/icons/skills/liumian.png" width="100" alt="流眄" /> | **流眄** | 「流眄乎洛川」 | 真机监测：观察账号、作品、评论、搜索与推荐流 |
+| <img src="assets/icons/skills/caizhu.png" width="100" alt="采珠" /> | **采珠** | 「或采明珠，或拾翠羽」 | 内容入库：结构化保存事实、时间序列和证据 |
+| <img src="assets/icons/skills/liujing.png" width="100" alt="流精" /> | **流精** | 「转眄流精」 | 模式分析：账号诊断、内容归因、评论洞察、模式挖掘 |
+| <img src="assets/icons/skills/shuguan.png" width="100" alt="殊观" /> | **殊观** | 「俯则未察，仰以殊观」 | 运营发现：选题、建议、实验与周期复盘 |
 
 > **流眄监其变，采珠存其真，流精辨其势，殊观得其机。**
-
-## 核心技能
-
-<table>
-  <tr>
-    <td align="center"><img src="assets/icons/skills/liumian.png" width="220" alt="流眄" /><br/><strong>流眄</strong><br/>真机监测</td>
-    <td align="center"><img src="assets/icons/skills/caizhu.png" width="220" alt="采珠" /><br/><strong>采珠</strong><br/>内容入库</td>
-    <td align="center"><img src="assets/icons/skills/liujing.png" width="220" alt="流精" /><br/><strong>流精</strong><br/>模式分析</td>
-    <td align="center"><img src="assets/icons/skills/shuguan.png" width="220" alt="殊观" /><br/><strong>殊观</strong><br/>运营发现</td>
-  </tr>
-</table>
 
 ## 风控与账号隔离
 
